@@ -77,12 +77,175 @@ flowchart LR
 
 We gather files in various formats—**PDFs, HTML web pages, Excel sheets, or SQL databases**—and read their contents into clean, raw text documents.
 
+#### 💡 Practical Tutorial: Loading Multiple Source Formats in LangChain
+
+In a real-world RAG system, you will often need to retrieve answers from different types of data sources simultaneously. LangChain simplifies this through dedicated **Document Loaders**. No matter the source format, every loader outputs a list of standard `Document` objects containing the text and metadata, making them easy to unify.
+
+##### 1. The Setup: Imports
+
+First, import the required loaders:
+
+```python
+from langchain_community.document_loaders import (
+    PyMuPDFLoader,  # Fast PDF parsing
+    TextLoader,      # Plain text & markdown files
+    CSVLoader        # Tabular CSV data
+)
+from langchain_community.utilities import SQLDatabase
+from langchain_community.document_loaders import SQLDatabaseLoader
+```
+
+##### 2. Loading Files & Databases
+
+Here is how you ingest text from each format. Each `.load()` call returns a list of parsed LangChain `Document` objects.
+
+* **PDF Documents:**
+
+  ```python
+  pdf_loader = PyMuPDFLoader("../Data/Embedding_Models.pdf")
+  pdf_docs = pdf_loader.load()
+  ```
+* **Plain Text Files (`.txt` / `.md`):**
+
+  ```python
+  text_loader = TextLoader("../Data/company_policy.txt")
+  text_docs = text_loader.load()
+  ```
+* **CSV Spreadsheets:**
+
+  ```python
+  csv_loader = CSVLoader(
+      file_path="../Data/customer_data.csv",
+      source_column="Customer_Feedback"  # Optional: specify primary content column
+  )
+  csv_docs = csv_loader.load()
+  ```
+* **SQL Databases:**
+
+  ```python
+  # Connect to the DB (e.g. SQLite)
+  db = SQLDatabase.from_uri("sqlite:///../Data/my_company_db.db")
+
+  # Fetch text fields using a query
+  db_loader = SQLDatabaseLoader.from_query(
+      query="SELECT first_name, last_name, customer_notes FROM customers;",
+      db=db
+  )
+  db_docs = db_loader.load()
+  ```
+
+##### 3. Combining all Sources
+
+To build a single unified RAG index, merge all lists of loaded documents into one master list before passing them to the text splitter:
+
+```python
+# Unify all sources into a single list
+all_documents = []
+all_documents.extend(pdf_docs)
+all_documents.extend(text_docs)
+all_documents.extend(csv_docs)
+all_documents.extend(db_docs)
+
+print(f"Total unified documents loaded: {len(all_documents)}")
+```
+
+#### 🛠️ Modular Ingestion: Creating a Reusable Data Loader Helper
+
+In standard development, writing loader logic directly inside notebook cells can clutter your workflow. A best practice is to modularize the data ingestion code into a separate file inside a helper directory (like `src/data_loader.py`).
+
+We have configured a modular helper [data_loader.py](<file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/src/data_loader.py>) that encapsulates file existence validation, basic database connection safety, and returns a unified list of Document objects.
+
+##### How to Import and Run it inside your Notebook:
+
+```python
+import sys
+# Tell Python to search the parent folder for the 'src' package
+sys.path.append("..") 
+
+from src.data_loader import load_multi_source_data
+
+# Simply pass lists of files and database details
+all_documents = load_multi_source_data(
+    pdf_files=["../Data/Embedding_Models.pdf"],
+    text_files=["../Data/company_policy.txt"],
+    csv_files=["../Data/customer_data.csv"],
+    db_configs=[{"uri": "sqlite:///../Data/my_company_db.db", "query": "SELECT * FROM customers;"}]
+)
+```
+
 ### Step 2: Data Parsing & Chunking
 
-LLMs have limits on how much text they can process at once. If we feed a 500-page document, the model might get confused or run out of memory.
+Large Language Models (LLMs) have strict limits on how much text they can process in a single prompt (the context window). If we pass a 100-page document directly, the model might drop context, hallucinate, or become extremely expensive to run.
 
-* **Chunking** splits long documents into smaller, logical pieces (e.g., 500-character segments or paragraph-sized pieces).
-* *Example:* An HR PDF is split into separate chunks: Chunk 1 covers *Sick Leaves*, Chunk 2 covers *Annual Leaves*, and Chunk 3 covers *Maternity Leaves*.
+**Chunking** is the process of breaking long documents down into smaller, self-contained, and semantically logical pieces.
+
+---
+
+#### 🧠 Chunking Parameters Explained
+
+When setting up a text splitter, you control two main variables:
+
+1. **`chunk_size`**: The target maximum length of each chunk (typically measured in characters or tokens).
+   * *Small Chunks (e.g., 200 chars):* Highly specific, but might miss broader context.
+   * *Large Chunks (e.g., 2000 chars):* Rich context, but might dilute the specific answer or waste LLM tokens.
+   * *Sweet Spot:* `1000` characters (~150 to 200 words).
+2. **`chunk_overlap`**: The amount of text shared between consecutive chunks.
+   * *Purpose:* Prevents context from being sliced in half. If a key sentence happens to start at the split border, the overlap ensures it is captured completely in both chunks.
+   * *Standard Practice:* $10\%$ to $20\%$ of the chunk size (e.g., `200` characters of overlap for a `1000` size).
+
+---
+
+#### ⚖️ The Dilemma: Structured vs. Unstructured Data
+
+A common mistake in RAG architecture is applying the exact same chunking strategy to all document types.
+
+* **Unstructured Data (PDFs, TXT, MD):** Requires standard chunking. Since sentences flow continuously across pages, we must split them into segments (like `RecursiveCharacterTextSplitter`) to index them correctly.
+* **Structured/Tabular Data (CSVs, SQL Database Rows):** **Should NOT be split.** A single row in a CSV or database represents a complete, self-contained record (e.g., user feedback, product specs). Running a row through a text splitter might sever the relationship (like separating a customer's ID from their review text), destroying the data's meaning.
+
+---
+
+#### 💡 Practical Tutorial: Mixed-Type Chunking In LangChain
+
+To handle this cleanly in your pipeline, you can dynamically scan the `all_documents` list returned by your loader, split the PDFs/Texts, and bypass the splitter for your CSVs/DB rows.
+
+##### The Code to Run in Your Notebook:
+```python
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# 1. Initialize the splitter for unstructured files
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200
+)
+
+# 2. Categorize documents dynamically
+unstructured_docs = []
+structured_docs = []
+
+for doc in all_documents:
+    # Read the file path/type from the metadata
+    source = doc.metadata.get("source", "").lower()
+    
+    # If the file is a PDF, Text file, or Markdown, separate it for splitting
+    if source.endswith(".pdf") or source.endswith(".txt") or source.endswith(".md"):
+        unstructured_docs.append(doc)
+    else:
+        # Keep CSV rows and Database records intact
+        structured_docs.append(doc)
+
+# 3. Apply the splitter only to the unstructured documents
+split_chunks = text_splitter.split_documents(unstructured_docs)
+
+# 4. Merge split chunks with the untouched structured documents
+final_chunks = split_chunks + structured_docs
+
+print(f"Original documents loaded: {len(all_documents)}")
+print(f"Unstructured documents split into {len(split_chunks)} chunks")
+print(f"Structured items kept unsplit: {len(structured_docs)}")
+print(f"Total unified chunks ready for Vector DB: {len(final_chunks)}")
+```
+
+---
 
 ### Step 3: Embedding (Text $\rightarrow$ Vectors)
 

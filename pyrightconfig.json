@@ -1,0 +1,8 @@
+{
+  "venvPath": "/opt/homebrew/Caskroom/miniforge/base/envs",
+  "venv": "rag_env",
+  "pythonPath": "/opt/homebrew/Caskroom/miniforge/base/envs/rag_env/bin/python",
+  "extraPaths": [
+    "/opt/homebrew/Caskroom/miniforge/base/envs/rag_env/lib/python3.10/site-packages"
+  ]
+}

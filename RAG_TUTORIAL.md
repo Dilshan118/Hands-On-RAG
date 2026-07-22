@@ -286,6 +286,50 @@ A **Vector Database** is a specialized database built to organize, store, and qu
 
 ---
 
+#### 💡 Practical Tutorial: Setup & Imports for Embeddings & Vector DB
+
+To implement this phase in Python, you import specific tools for vector math, model loading, local storage, unique ID creation, and similarity calculations:
+
+##### 1. Python Imports & Dependencies Explained
+
+```python
+import uuid
+from typing import List, Dict, Any, Tuple
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+import chromadb
+from chromadb.config import Settings
+from sklearn.metrics.pairwise import cosine_similarity
+```
+
+* **`numpy`**: Provides fast array operations for vector math.
+* **`SentenceTransformer`**: Loads local open-source embedding models (e.g. `all-MiniLM-L6-v2`) to convert text into vector arrays.
+* **`chromadb`**: The local vector database engine that persists chunks, vectors, and metadata in a folder.
+* **`Settings`**: Configures ChromaDB behavior (e.g. database path, telemetry settings).
+* **`uuid`**: Generates unique IDs (e.g. `uuid.uuid4()`) so every stored vector chunk has a distinct key in the database.
+* **`typing`**: Adds clean Python type hints (`List`, `Dict`, `Tuple`) for robust function signatures.
+* **`cosine_similarity`**: Computes mathematical similarity scores between pairs of vectors.
+
+##### 2. Basic Initialization Example
+
+```python
+# Initialize local HuggingFace embedding model
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Generate a sample vector
+sample_vector = embedding_model.encode("What is the company leave policy?")
+print(f"Generated Vector Length (Dimensions): {len(sample_vector)}")
+
+# Initialize local ChromaDB persistent storage
+chroma_client = chromadb.PersistentClient(path="../Data/chroma_db")
+collection = chroma_client.get_or_create_collection(name="rag_documents")
+
+print("✅ Local Vector DB & Embedding Model initialized successfully!")
+```
+
+---
+
 ## 4. Pipeline #2: Retrieval & Generation (The Action Phase)
 
 Once our Knowledge Base is set up, we are ready to answer queries in real-time. This is the **Retrieval Pipeline**.

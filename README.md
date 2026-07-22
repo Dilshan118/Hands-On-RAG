@@ -1,43 +1,48 @@
-# 🤖 Hands-On RAG: A Beginner's Ingestion & Retrieval Playground
+# ⚡ Modular RAG Ingestion & Vector Retrieval Engine
 
-Welcome to the **RAG (Retrieval-Augmented Generation)** learning repository! This project serves as a step-by-step playground designed to document, learn, and implement RAG systems from scratch using **Python**, **Conda**, and **LangChain**.
-
-If you are a beginner looking to understand how to connect Large Language Models to custom private data (like PDFs, CSVs, and databases), this repository is built specifically for you.
+A production-minded, modular **Retrieval-Augmented Generation (RAG)** pipeline implementation in Python. This project demonstrates how to ingest, validate, and chunk multi-source heterogenous data (PDFs, CSVs, plain text, and relational SQL databases), generate high-dimensional semantic embeddings, and index them into local vector stores.
 
 ---
 
-## 🗺️ Learning Roadmap & Guides
+## 🎯 Architecture & Project Highlights
 
-We have split our learning process and documentation into specific, easy-to-follow files:
-
-* **📖 [Beginner RAG Tutorial & Theory](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/RAG_TUTORIAL.md)**  
-  *Our core learning document.* It contains intuitive startup problem examples, fine-tuning vs. RAG comparisons, overall pipeline architecture flowcharts, and step-by-step code tutorials for mixed-source loading (PDF, CSV, SQL) and split strategies.
-* **🛠️ [Python & Conda Setup Guide](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/SETUP_GUIDE.md)**  
-  *How to set up your environment.* Covers creating your `rag_env` Conda environment, resolving VS Code interpreter mismatches, and clearing up language server "missing-import" red lines.
+* **Multi-Source Data Ingestion**: Custom modular loader (`src/data_loader.py`) designed to handle PDFs, text files, CSV tables, and SQL database queries with built-in path validation and exception handling.
+* **Smart Hybrid Chunking**: Implements `RecursiveCharacterTextSplitter` for unstructured text while dynamically preserving structured tabular rows (CSV/SQL) to prevent contextual fragmentation.
+* **Vector Indexing & Local Storage**: Generates semantic embeddings using `SentenceTransformer` (`all-MiniLM-L6-v2`) and indexes vectors locally using `ChromaDB` persistent storage.
+* **Robust Workspace & Environment Control**: Fully configured Conda environment (`rag_env`) and Language Server configuration (`pyrightconfig.json`) for seamless development.
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Architecture
 
 ```
 RAG/
-├── .vscode/               # VS Code workspace settings
-├── Data/                  # Local directory for raw documents (PDFs, CSVs, etc.)
+├── .vscode/               # Workspace interpreter settings
+├── Data/                  # Local storage for source documents & persistent vector DB
 ├── NoteBook/              
-│   └── document.ipynb     # Jupyter Notebook where we run the RAG steps
+│   └── document.ipynb     # Interactive pipeline development & verification notebook
 ├── src/                   
-│   └── data_loader.py     # Unified Python module to load PDFs, CSVs, TXT, & DBs
-├── .gitignore             # Git exclusion lists (ignores models, DBs, secret keys)
-├── pyrightconfig.json     # Configuration to sync the linter to our Conda env
-├── requirements.txt       # Necessary packages (LangChain, PyMuPDF, dotenv)
-├── SETUP_GUIDE.md         # Step-by-step environment registration manual
-└── RAG_TUTORIAL.md        # Deep dive into RAG theory, chunking, and code snippets
+│   └── data_loader.py     # Modular ingestion module for PDFs, CSVs, TXT, & SQL DBs
+├── .gitignore             # Version control exclusions (ignores DBs, vectors, API keys)
+├── pyrightconfig.json     # Language Server environment sync config
+├── requirements.txt       # Dependencies (LangChain, ChromaDB, SentenceTransformers)
+├── SETUP_GUIDE.md         # Environment setup and troubleshooting documentation
+└── RAG_TUTORIAL.md        # Technical reference guide & RAG pipeline breakdown
 ```
 
 ---
 
-## 🚀 Getting Started
+## 📖 Technical Documentation & Guides
 
-1. **Clone & Open:** Open this folder in VS Code or Antigravity IDE.
-2. **Setup the Environment:** Follow the activation steps inside [SETUP_GUIDE.md](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/SETUP_GUIDE.md).
-3. **Run the Code:** Open [document.ipynb](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/NoteBook/document.ipynb), select your registered Conda kernel (`Python (rag_env)`), and run the cells!
+* **⚙️ [Environment & Setup Guide](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/SETUP_GUIDE.md)**: Instructions for activating `rag_env`, resolving Linter errors, and Jupyter kernel registration.
+* **📘 [RAG System Deep-Dive & Reference](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/RAG_TUTORIAL.md)**: Comprehensive architectural notes covering ingestion strategies, chunking math, embedding models, and vector database comparisons.
+
+---
+
+## 🚀 Quickstart
+
+1. **Clone & Environment Setup**: Ensure Conda environment `rag_env` is active and dependencies are installed:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Execute Ingestion & Search Pipeline**: Open [document.ipynb](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/NoteBook/document.ipynb), set your kernel to `Python (rag_env)`, and execute the pipeline cells.

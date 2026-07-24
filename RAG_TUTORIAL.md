@@ -259,9 +259,21 @@ Computers cannot perform semantic similarity matching using raw text strings alo
 
 | Embedding Model | Type | Pros | Cons | Best Suited For |
 | :--- | :--- | :--- | :--- | :--- |
-| **OpenAI (`text-embedding-3-small` / `large`)** | Cloud API (Paid) | Industry standard accuracy, handles multiple languages, zero local resource overhead. | Requires active internet, cost per token, data privacy concerns. | Production applications, fast prototyping, zero local GPU setups. |
-| **Hugging Face (`all-MiniLM-L6-v2`)** | Open Source (Local) | $100\%$ free, runs entirely offline (complete data privacy), fast on standard CPUs. | Uses local RAM/CPU, slightly less accurate for highly complex reasoning. | **Learning, Tutorials, & Local Prototypes** (Recommended for this project). |
-| **Cohere Embed (`embed-english-v3.0`)** | Enterprise API | Best-in-class performance for search and retrieval matching. | Paid service, internet dependent. | Multi-language semantic search engines. |
+| **Google Gemini (`models/gemini-embedding-001`)** | Cloud API (Google AI) | Highly accurate 768-dim vectors, multilingual, fast, free tier via Google AI Studio. | Requires API Key (`GOOGLE_API_KEY`), internet connection. | **Cloud RAG pipelines, production-grade applications**. |
+| **Hugging Face (`all-MiniLM-L6-v2`)** | Open Source (Local) | $100\%$ free, runs entirely offline (complete data privacy), fast on standard CPUs. | Uses local RAM/CPU, 384-dim (slightly lower reasoning than large API models). | **Learning, Tutorials, & Local Offline Prototypes**. |
+| **OpenAI (`text-embedding-3-small` / `large`)** | Cloud API (Paid) | Industry standard accuracy, handles multiple languages, zero local resource overhead. | Requires active internet, cost per token, data privacy concerns. | Production applications, fast prototyping. |
+
+---
+
+### 🛡️ Engineering Best Practice: Modular Abstraction & Secure API Keys
+
+When moving beyond basic prototypes, hardcoding model-specific code directly in notebook cells creates tight coupling. A best practice is to use **Object-Oriented Abstraction**:
+
+1. **The Abstraction Pattern (`src/embedding_manager.py`)**: Wrap your embedding logic inside a class called `EmbeddingManager`. The rest of your RAG pipeline only calls `embedder.generate_embedding(text)`. It doesn't care whether the vector comes from a local CPU model or Google Cloud APIs!
+2. **Secure API Key Management (`.env` file)**:
+   * **Rule #1:** Never hardcode secret API keys (like `GOOGLE_API_KEY`) inside code files.
+   * **Rule #2:** Store secrets in a local `.env` file and exclude `.env` from Git via `.gitignore`.
+   * **Rule #3:** Use `python-dotenv` to load keys into environment variables safely at runtime.
 
 ---
 
@@ -282,13 +294,13 @@ A **Vector Database** is a specialized database built to organize, store, and qu
 
 > [!TIP]
 > **Recommended Sandbox Stack for Beginners:**
-> For learning and building your first RAG system, the ideal combination is running **Hugging Face (`all-MiniLM-L6-v2`)** as your embedding model and **ChromaDB** as your vector database. This keeps your entire data pipeline $100\%$ free, secure, and completely local to your Conda environment without needing any API keys.
+> For learning and building your first RAG system, you can start with **Local Hugging Face (`all-MiniLM-L6-v2`)** for offline zero-cost development, and easily switch to **Google Gemini (`models/gemini-embedding-001`)** via your `.env` key when ready!
 
 ---
 
-#### 💡 Practical Tutorial: Setup & Imports for Embeddings & Vector DB
+#### 💡 Practical Tutorial: Setup & Modular Imports for Embeddings & Vector DB
 
-To implement this phase in Python, you import specific tools for vector math, model loading, local storage, unique ID creation, and similarity calculations:
+To implement this phase cleanly, we use our modular `EmbeddingManager` ([src/embedding_manager.py](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/src/embedding_manager.py)) alongside ChromaDB storage:
 
 ##### 1. Python Imports & Dependencies Explained
 
@@ -297,35 +309,49 @@ import uuid
 from typing import List, Dict, Any, Tuple
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
 from sklearn.metrics.pairwise import cosine_similarity
+from src.embedding_manager import EmbeddingManager
 ```
 
 * **`numpy`**: Provides fast array operations for vector math.
-* **`SentenceTransformer`**: Loads local open-source embedding models (e.g. `all-MiniLM-L6-v2`) to convert text into vector arrays.
+* **`EmbeddingManager`**: Our custom OOP class supporting both local (`SentenceTransformer`) and cloud (`Google Gemini`) providers.
 * **`chromadb`**: The local vector database engine that persists chunks, vectors, and metadata in a folder.
 * **`Settings`**: Configures ChromaDB behavior (e.g. database path, telemetry settings).
 * **`uuid`**: Generates unique IDs (e.g. `uuid.uuid4()`) so every stored vector chunk has a distinct key in the database.
-* **`typing`**: Adds clean Python type hints (`List`, `Dict`, `Tuple`) for robust function signatures.
 * **`cosine_similarity`**: Computes mathematical similarity scores between pairs of vectors.
 
-##### 2. Basic Initialization Example
+##### 2. Multi-Provider Initialization Examples
 
+###### Option A: Using Local Offline Embeddings ($100\%$ Free & Offline)
 ```python
-# Initialize local HuggingFace embedding model
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+# Initialize local HuggingFace embedding manager
+embedder = EmbeddingManager(provider="local")
 
-# Generate a sample vector
-sample_vector = embedding_model.encode("What is the company leave policy?")
-print(f"Generated Vector Length (Dimensions): {len(sample_vector)}")
+# Generate a sample 384-dimensional vector
+sample_vector = embedder.generate_embedding("What is the company leave policy?")
+print(f"Local Vector Length (Dimensions): {len(sample_vector)}") # Output: 384
+```
 
+###### Option B: Using Google Gemini Pro / AI Studio API
+Make sure `GOOGLE_API_KEY=AIzaSy...` is set in your `.env` file first:
+```python
+# Initialize Google Gemini embedding manager
+embedder = EmbeddingManager(provider="google")
+
+# Generate a sample 768-dimensional vector
+sample_vector = embedder.generate_embedding("What is the company leave policy?")
+print(f"Google Gemini Vector Length (Dimensions): {len(sample_vector)}") # Output: 768
+```
+
+##### 3. Initializing Local ChromaDB Storage
+```python
 # Initialize local ChromaDB persistent storage
 chroma_client = chromadb.PersistentClient(path="../Data/chroma_db")
 collection = chroma_client.get_or_create_collection(name="rag_documents")
 
-print("✅ Local Vector DB & Embedding Model initialized successfully!")
+print("✅ Vector DB & Multi-Provider Embedding Manager initialized successfully!")
 ```
 
 ---

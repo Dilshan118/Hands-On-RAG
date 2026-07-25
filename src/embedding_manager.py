@@ -1,22 +1,24 @@
 import os
-from typing import List, Union
+from typing import List, Union, Optional
 import numpy as np
 from dotenv import load_dotenv, find_dotenv
 
 # Search parent folders for .env if executing from subdirectories like NoteBook/
-load_dotenv(find_dotenv())
+load_dotenv(find_dotenv(), override=True)
 
 class EmbeddingManager:
     """Handles document embedding generation using local SentenceTransformer or Google Gemini API."""
 
-    def __init__(self, provider: str = "local", model_name: str = None):
+    def __init__(self, provider: str = "local", model_name: str = None, dimension: Optional[int] = None):
         """
         Args:
             provider: 'local' (HuggingFace) or 'google' (Google Gemini API)
             model_name: Model name. Defaults to 'all-MiniLM-L6-v2' for local,
-                        or 'models/text-embedding-004' for Google.
+                        or 'models/gemini-embedding-001' for Google.
+            dimension: Optional target vector dimension (e.g. 1024 for Pinecone).
         """
         self.provider = provider.lower()
+        self.dimension = dimension
         
         if self.provider == "local":
             self.model_name = model_name or "all-MiniLM-L6-v2"
@@ -49,11 +51,16 @@ class EmbeddingManager:
         
         try:
             print(f"Loading Google Gemini embedding model: '{self.model_name}'...")
-            self.model = GoogleGenerativeAIEmbeddings(
-                model=self.model_name,
-                google_api_key=api_key
-            )
-            print("✅ Google Gemini Embedding Model initialized successfully!")
+            kwargs = {
+                "model": self.model_name,
+                "google_api_key": api_key
+            }
+            if self.dimension:
+                kwargs["output_dimensionality"] = self.dimension
+
+            self.model = GoogleGenerativeAIEmbeddings(**kwargs)
+            dim_msg = f" ({self.dimension} dimensions)" if self.dimension else ""
+            print(f"✅ Google Gemini Embedding Model initialized successfully!{dim_msg}")
         except Exception as e:
             print(f"❌ Error initializing Google model {self.model_name}: {e}")
             raise
@@ -77,4 +84,3 @@ class EmbeddingManager:
             return self.model.encode(texts, show_progress_bar=True).tolist()
         elif self.provider == "google":
             return self.model.embed_documents(texts)
-

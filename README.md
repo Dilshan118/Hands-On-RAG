@@ -14,7 +14,7 @@ A high-performance repository demonstrating the evolution from **Fundamental RAG
 ---
 
 ## 🤖 1. Agentic Research Assistant (Featured Multi-Agent System)
-📁 **[Explore Agentic Research Assistant Sub-Project](Agentic_Research_Assistant/)**
+📁 **[Explore Agentic Research Assistant Sub-Project](Agentic_Research_Assistant/)** \| 📘 **[Read Deep-Dive Technical Tutorial](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
 
 An autonomous multi-agent research engine built with **LangGraph** that decomposes complex prompts into sub-questions, executes parallel retrieval across local vector databases and live web search, fact-checks draft reports for hallucinations using a Critic Agent, and automatically loops back to refine search queries if quality thresholds are not met.
 

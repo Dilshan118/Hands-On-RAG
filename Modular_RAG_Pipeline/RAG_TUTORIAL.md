@@ -300,59 +300,76 @@ A **Vector Database** is a specialized database built to organize, store, and qu
 
 #### 💡 Practical Tutorial: Setup & Modular Imports for Embeddings & Vector DB
 
-To implement this phase cleanly, we use our modular `EmbeddingManager` ([src/embedding_manager.py](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/src/embedding_manager.py)) alongside ChromaDB storage:
+To implement this phase cleanly, we use our modular `EmbeddingManager` ([src/embedding_manager.py](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/src/embedding_manager.py)) alongside our `VectorStoreManager` ([src/vector_store.py](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/src/vector_store.py)):
 
 ##### 1. Python Imports & Dependencies Explained
 
 ```python
-import uuid
-from typing import List, Dict, Any, Tuple
+import sys
+sys.path.append("..")
 
-import numpy as np
-import chromadb
-from chromadb.config import Settings
-from sklearn.metrics.pairwise import cosine_similarity
+from src.data_loader import load_multi_source_data
 from src.embedding_manager import EmbeddingManager
+from src.vector_store import VectorStoreManager
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 ```
 
-* **`numpy`**: Provides fast array operations for vector math.
-* **`EmbeddingManager`**: Our custom OOP class supporting both local (`SentenceTransformer`) and cloud (`Google Gemini`) providers.
-* **`chromadb`**: The local vector database engine that persists chunks, vectors, and metadata in a folder.
-* **`Settings`**: Configures ChromaDB behavior (e.g. database path, telemetry settings).
-* **`uuid`**: Generates unique IDs (e.g. `uuid.uuid4()`) so every stored vector chunk has a distinct key in the database.
-* **`cosine_similarity`**: Computes mathematical similarity scores between pairs of vectors.
+* **`load_multi_source_data`**: Loads documents across PDF, TXT, CSV, and SQL sources into unified LangChain Document objects.
+* **`RecursiveCharacterTextSplitter`**: Splits long text semantically into manageable chunks (e.g., `chunk_size=1000`, `chunk_overlap=200`).
+* **`EmbeddingManager`**: Our custom OOP class supporting both local (`SentenceTransformer`) and cloud (`Google Gemini`) providers, with flexible vector dimension sizing (`dimension=1024`).
+* **`VectorStoreManager`**: Our custom OOP storage class supporting both local disk databases (`ChromaDB`) and production cloud databases (`Pinecone`).
 
-##### 2. Multi-Provider Initialization Examples
+---
 
-###### Option A: Using Local Offline Embeddings ($100\%$ Free & Offline)
+##### 2. Multi-Provider Embedding & Vector Storage Examples
+
+###### Option A: Local Storage Stack ($100\%$ Free & Offline)
+Runs entirely on your CPU without any API keys or internet connection:
 ```python
-# Initialize local HuggingFace embedding manager
+# Initialize local HuggingFace embeddings (384-dim) & local ChromaDB
 embedder = EmbeddingManager(provider="local")
+vector_db = VectorStoreManager(provider="chroma", collection_name="rag_docs")
 
-# Generate a sample 384-dimensional vector
-sample_vector = embedder.generate_embedding("What is the company leave policy?")
-print(f"Local Vector Length (Dimensions): {len(sample_vector)}") # Output: 384
+# Load and split documents
+raw_docs = load_multi_source_data(pdf_files=["../Data/Embedding_Models.pdf"])
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = text_splitter.split_documents(raw_docs)
+
+# Generate embeddings and store locally
+chunk_texts = [doc.page_content for doc in chunks]
+chunk_vectors = embedder.generate_embeddings(chunk_texts)
+vector_db.add_documents(documents=chunks, embeddings=chunk_vectors)
 ```
 
-###### Option B: Using Google Gemini Pro / AI Studio API
-Make sure `GOOGLE_API_KEY=AIzaSy...` is set in your `.env` file first:
+###### Option B: Production Cloud Stack (Google Gemini + Pinecone Cloud)
+Make sure `GOOGLE_API_KEY` and `PINECONE_API_KEY` are configured in your `.env` file:
 ```python
-# Initialize Google Gemini embedding manager
-embedder = EmbeddingManager(provider="google")
+# Initialize Google Gemini (1024-dim matching Pinecone index) & Cloud Pinecone
+embedder = EmbeddingManager(provider="google", dimension=1024)
+vector_db = VectorStoreManager(provider="pinecone")
 
-# Generate a sample 768-dimensional vector
-sample_vector = embedder.generate_embedding("What is the company leave policy?")
-print(f"Google Gemini Vector Length (Dimensions): {len(sample_vector)}") # Output: 768
+# Load and split documents
+raw_docs = load_multi_source_data(pdf_files=["../Data/Embedding_Models.pdf"])
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+chunks = text_splitter.split_documents(raw_docs)
+
+# Generate 1024-dim cloud embeddings and upsert to Pinecone
+chunk_texts = [doc.page_content for doc in chunks]
+chunk_vectors = embedder.generate_embeddings(chunk_texts)
+vector_db.add_documents(documents=chunks, embeddings=chunk_vectors)
 ```
 
-##### 3. Initializing Local ChromaDB Storage
-```python
-# Initialize local ChromaDB persistent storage
-chroma_client = chromadb.PersistentClient(path="../Data/chroma_db")
-collection = chroma_client.get_or_create_collection(name="rag_documents")
+---
 
-print("✅ Vector DB & Multi-Provider Embedding Manager initialized successfully!")
-```
+### 🛡️ Production Engineering Best Practices Learned
+
+1. **Vector Dimension Alignment**:
+   * Vector database indexes require **exact dimension matching**. If your Pinecone index is created with `1024` dimensions, your embedding provider must generate `1024`-dimensional vectors.
+   * `EmbeddingManager(provider="google", dimension=1024)` uses Gemini's `output_dimensionality` feature to dynamically match your cloud index configuration cleanly!
+
+2. **Idempotent Ingestion & Deterministic Hashing**:
+   * Using random `uuid.uuid4()` IDs creates duplicate records every time an ingestion pipeline cell is re-run.
+   * By generating **deterministic MD5 hashes** based on document metadata and chunk text (`hashlib.md5(...)`), vector database calls use **`upsert`** (*Update or Insert*). Re-running your pipeline updates existing records rather than duplicating them!
 
 ---
 

@@ -1,48 +1,61 @@
-# ⚡ Modular RAG Ingestion & Vector Retrieval Engine
+# ⚡ RAG & Agentic Systems Engineering Portfolio
 
-A production-minded, modular **Retrieval-Augmented Generation (RAG)** pipeline implementation in Python. This project demonstrates how to ingest, validate, and chunk multi-source heterogenous data (PDFs, CSVs, plain text, and relational SQL databases), generate high-dimensional semantic embeddings, and index them into local vector stores.
-
----
-
-## 🎯 Architecture & Project Highlights
-
-* **Multi-Source Data Ingestion**: Custom modular loader (`src/data_loader.py`) designed to handle PDFs, text files, CSV tables, and SQL database queries with built-in path validation and exception handling.
-* **Smart Hybrid Chunking**: Implements `RecursiveCharacterTextSplitter` for unstructured text while dynamically preserving structured tabular rows (CSV/SQL) to prevent contextual fragmentation.
-* **Vector Indexing & Local Storage**: Generates semantic embeddings using `SentenceTransformer` (`all-MiniLM-L6-v2`) and indexes vectors locally using `ChromaDB` persistent storage.
-* **Robust Workspace & Environment Control**: Fully configured Conda environment (`rag_env`) and Language Server configuration (`pyrightconfig.json`) for seamless development.
+A high-performance repository demonstrating the evolution from **Fundamental RAG Ingestion & Vector Retrieval Pipelines** to **Autonomous Multi-Agent Collaboration Engines**.
 
 ---
 
-## 📂 Project Architecture
+## 📂 Sub-Projects Overview
+
+| Project Name | Architecture | Key Technologies | Status |
+| :--- | :--- | :--- | :--- |
+| 🤖 **[Agentic Research Assistant](Agentic_Research_Assistant/)** | Autonomous Multi-Agent Graph + Dynamic Reflection Loop | LangGraph, Gemini 2.0, ChromaDB, DuckDuckGo Search, Pydantic, Streamlit | **Featured Project** |
+| 📚 **[Modular RAG Pipeline](Modular_RAG_Pipeline/)** | Multi-Source Heterogeneous Ingestion & Hybrid Vector Search | Python, LangChain, SentenceTransformers, ChromaDB, Jupyter | **Study Project** |
+
+---
+
+## 🤖 1. Agentic Research Assistant (Featured Multi-Agent System)
+📁 **[Explore Agentic Research Assistant Sub-Project](Agentic_Research_Assistant/)**
+
+An autonomous multi-agent research engine built with **LangGraph** that decomposes complex prompts into sub-questions, executes parallel retrieval across local vector databases and live web search, fact-checks draft reports for hallucinations using a Critic Agent, and automatically loops back to refine search queries if quality thresholds are not met.
+
+### Key Capabilities:
+* **Task Decomposition:** Planner Agent using Pydantic structured output.
+* **Hybrid Retrieval:** Dense vector search (`ChromaDB`) + live web search (`DuckDuckGo`).
+* **Self-Correction & Reflection Loop:** Automated groundedness scoring (0.0 to 1.0) with dynamic query re-submission.
+* **Interactive Dashboard:** Full Streamlit UI with real-time agent execution logs and inline citations.
+
+---
+
+## 📚 2. Modular RAG Ingestion Pipeline (Study Project)
+📁 **[Explore Modular RAG Pipeline Sub-Project](Modular_RAG_Pipeline/)**
+
+A production-minded, modular RAG ingestion & retrieval pipeline built to handle heterogeneous data sources (PDFs, CSVs, plain text, SQL databases) with smart character chunking, embedding generation via `SentenceTransformers`, and persistent vector indexing.
+
+### Key Capabilities:
+* **Heterogeneous Data Loaders:** Custom loader for structured & unstructured data.
+* **Smart Tabular Chunking:** Preserves CSV and SQL table structure during chunking.
+* **Interactive Tutorial:** Accompanied by Jupyter Notebook ([`document.ipynb`](Modular_RAG_Pipeline/NoteBook/document.ipynb)) and deep-dive technical reference guides ([`RAG_TUTORIAL.md`](Modular_RAG_Pipeline/RAG_TUTORIAL.md)).
+
+---
+
+## 🛠️ Repository Architecture
 
 ```
 RAG/
-├── .vscode/               # Workspace interpreter settings
-├── Data/                  # Local storage for source documents & persistent vector DB
-├── NoteBook/              
-│   └── document.ipynb     # Interactive pipeline development & verification notebook
-├── src/                   
-│   └── data_loader.py     # Modular ingestion module for PDFs, CSVs, TXT, & SQL DBs
-├── .gitignore             # Version control exclusions (ignores DBs, vectors, API keys)
-├── pyrightconfig.json     # Language Server environment sync config
-├── requirements.txt       # Dependencies (LangChain, ChromaDB, SentenceTransformers)
-├── SETUP_GUIDE.md         # Environment setup and troubleshooting documentation
-└── RAG_TUTORIAL.md        # Technical reference guide & RAG pipeline breakdown
+├── 🤖 Agentic_Research_Assistant/   # Autonomous Multi-Agent StateGraph System
+│   ├── app.py                       # Streamlit UI Dashboard
+│   ├── config.py                    # Gemini & LLM settings
+│   ├── requirements.txt             # Agentic dependencies
+│   ├── README.md                    # Detailed multi-agent system documentation
+│   └── src/                         # Planner, Research, Writer, & Critic Agents
+│
+├── 📚 Modular_RAG_Pipeline/        # Fundamental RAG Data Loader & Ingestion Study Project
+│   ├── README.md                    # Dedicated study project guide
+│   ├── RAG_TUTORIAL.md              # Deep-dive RAG technical guide
+│   ├── SETUP_GUIDE.md               # Environment setup instructions
+│   ├── NoteBook/                    # Interactive Jupyter notebook
+│   ├── Data/                        # Test datasets & vector storage
+│   └── src/                         # Ingestion, Embedding, & Vector Store modules
+│
+└── README.md                        # Master Portfolio Hub (This file)
 ```
-
----
-
-## 📖 Technical Documentation & Guides
-
-* **⚙️ [Environment & Setup Guide](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/SETUP_GUIDE.md)**: Instructions for activating `rag_env`, resolving Linter errors, and Jupyter kernel registration.
-* **📘 [RAG System Deep-Dive & Reference](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/RAG_TUTORIAL.md)**: Comprehensive architectural notes covering ingestion strategies, chunking math, embedding models, and vector database comparisons.
-
----
-
-## 🚀 Quickstart
-
-1. **Clone & Environment Setup**: Ensure Conda environment `rag_env` is active and dependencies are installed:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. **Execute Ingestion & Search Pipeline**: Open [document.ipynb](file:///Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data%20science/RAG/NoteBook/document.ipynb), set your kernel to `Python (rag_env)`, and execute the pipeline cells.

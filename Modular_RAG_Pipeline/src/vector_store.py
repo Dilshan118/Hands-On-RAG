@@ -37,11 +37,22 @@ class VectorStoreManager:
     def add_documents(self, documents: List[Any], embeddings: List[List[float]]) -> None:
         """
         Stores document text chunks, their embeddings, and metadata into the vector database.
+        Uses deterministic hashing for chunk IDs to prevent duplicates on re-runs.
         """
+        import hashlib
+
         if len(documents) != len(embeddings):
             raise ValueError("The number of documents must match the number of embeddings.")
 
-        ids = [str(uuid.uuid4()) for _ in documents]
+        # Create stable, deterministic IDs based on chunk content & metadata to prevent duplicate vectors
+        ids = []
+        for i, doc in enumerate(documents):
+            source = str(doc.metadata.get("source", "doc"))
+            page = str(doc.metadata.get("page", 0))
+            raw_id_str = f"{source}_page_{page}_chunk_{i}_{doc.page_content[:30]}"
+            chunk_id = hashlib.md5(raw_id_str.encode("utf-8")).hexdigest()
+            ids.append(chunk_id)
+
         texts = [doc.page_content for doc in documents]
         metadatas = [doc.metadata for doc in documents]
 

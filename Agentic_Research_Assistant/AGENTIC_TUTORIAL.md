@@ -366,7 +366,7 @@ builder.add_conditional_edges(
 │  Responsibility: External data access, I/O operations          │
 ├────────────────────────────────────────────────────────────────┤
 │  LAYER 5: INFRASTRUCTURE & LLM FACTORY                         │
-│  config.py — Multi-provider LLM factory (Groq/Gemini/Ollama)  │
+│  config.py — Multi-provider LLM factory (Groq/Gemini/Ollama)   │
 │  Responsibility: Provider abstraction, configuration           │
 └────────────────────────────────────────────────────────────────┘
 ```

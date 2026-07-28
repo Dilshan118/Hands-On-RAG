@@ -1,10 +1,9 @@
-import time
 from config import get_llm
 
 def writer_agent_node(state: dict) -> dict:
     """
     Writer / Synthesizer Agent Node:
-    Aggregates web and vector search results into a comprehensive draft research report with inline citations.
+    Aggregates web & vector context into a rich Markdown Research Report with inline citations and references table.
     """
     topic = state["topic"]
     sub_questions = state.get("sub_questions", [])
@@ -13,52 +12,66 @@ def writer_agent_node(state: dict) -> dict:
     critic_feedback = state.get("critic_feedback", "")
     status_log = state.get("status_log", [])
     
-    status_log.append("✍️ Writer Agent: Synthesizing facts into a structured research draft...")
+    status_log.append("✍️ Writer Agent: Synthesizing facts into a structured research report...")
 
-    time.sleep(1)  # Pacing for rate limit safety
-
-    # Format context sources with numerical citations
+    # Build structured sources index
     sources_text = ""
     source_index = 1
-    citations_map = []
+    references_table = "| ID | Source Title | Web Link / Source |\n| :--- | :--- | :--- |\n"
 
     for item in web_results:
         snippet = item.get("snippet", "")
         url = item.get("url", "")
         title = item.get("title", "Web Source")
         if snippet:
-            sources_text += f"\n[{source_index}] Title: {title}\nURL: {url}\nContent: {snippet}\n"
-            citations_map.append(f"[{source_index}] {title} - {url}")
+            sources_text += f"\n[{source_index}] Title: {title}\nURL: {url}\nSnippet: {snippet}\n"
+            references_table += f"| [{source_index}] | **{title}** | [{url}]({url}) |\n"
             source_index += 1
 
     for doc in retrieved_docs:
         content = doc.get("content", "")
         source_name = doc.get("source", "Uploaded Document")
         if content:
-            sources_text += f"\n[{source_index}] Source: {source_name}\nContent: {content}\n"
-            citations_map.append(f"[{source_index}] Local Document: {source_name}")
+            sources_text += f"\n[{source_index}] Local Document: {source_name}\nSnippet: {content}\n"
+            references_table += f"| [{source_index}] | Local Document: `{source_name}` | Internal Vector Store |\n"
             source_index += 1
 
     feedback_prompt = ""
-    if critic_feedback:
-        feedback_prompt = f"\nCRITICAL REVIEW FEEDBACK FROM PREVIOUS DRAFT:\n{critic_feedback}\nMake sure to address all noted gaps or errors above.\n"
+    if critic_feedback and "meets" not in critic_feedback.lower():
+        feedback_prompt = f"\nCRITICAL REVIEW FEEDBACK FROM PREVIOUS DRAFT:\n{critic_feedback}\nMake sure to address all noted gaps above.\n"
 
-    prompt = f"""You are a Lead AI Technical Writer.
-Your task is to synthesize retrieved facts into a comprehensive, well-structured Markdown Research Report.
+    prompt = f"""You are a Lead AI Systems Technical Writer.
+Your goal is to synthesize the retrieved evidence into a comprehensive, publication-grade Markdown Research Report.
 
 Topic: {topic}
 
-Sub-Questions Addressed:
+Sub-Questions Analyzed:
 {chr(10).join(f"- {q}" for q in sub_questions)}
 {feedback_prompt}
-RETRIEVED EVIDENCE & SOURCES:
-{sources_text if sources_text else "No external evidence retrieved. Use high-level knowledge base."}
+RETRIEVED SOURCES & EVIDENCE:
+{sources_text if sources_text else "No external evidence retrieved. Use general domain knowledge base."}
 
-Report Guidelines:
-1. Include a clear Title, Executive Summary, Detailed Analysis by Sub-Question, and Conclusion.
-2. Use inline numerical citations like [1], [2] corresponding EXACTLY to the source numbers provided above whenever presenting facts.
-3. Keep the tone academic, objective, and accurate. Avoid unsupported claims.
-4. Conclude with a 'References' section listing all cited sources.
+Format Guidelines:
+# [Clear Descriptive Report Title]
+
+## 📌 Executive Summary
+Provide a high-level 2-3 paragraph executive summary of key findings.
+
+## 🚀 Key Takeaways
+- Highlight 4-5 major technical takeaways using bold key terms.
+
+## 🔬 Detailed Technical Analysis
+Break down the research by sub-question headers. Write detailed, academic paragraphs.
+Include inline numerical citations like [1], [2] corresponding EXACTLY to the source IDs provided above whenever presenting factual statements.
+
+## 📊 Summary Comparison
+Include a Markdown comparison table summarizing key aspects, trade-offs, or trends.
+
+## 🏁 Conclusion
+Provide a strategic conclusion and future outlook.
+
+## 📖 References
+{references_table if source_index > 1 else "*No external sources cited.*"}
 """
 
     llm = get_llm(temperature=0.3)

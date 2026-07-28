@@ -1,4 +1,5 @@
 import json
+import re
 import time
 from typing import List
 from pydantic import BaseModel, Field
@@ -7,34 +8,32 @@ from config import get_llm
 class PlannerOutput(BaseModel):
     """Pydantic schema for Planner Agent structured output."""
     sub_questions: List[str] = Field(description="4 targeted research sub-questions.")
-    search_queries: List[str] = Field(description="3-5 word search engine queries.")
+    search_queries: List[str] = Field(description="Clean, 3-5 word search engine query strings.")
 
 def planner_agent_node(state: dict) -> dict:
     """
     Planner Agent Node:
-    Decomposes user topic into sub-questions and search queries using Gemini.
+    Decomposes user topic into sub-questions and sanitized search queries.
     """
     topic = state["topic"]
     status_log = state.get("status_log", [])
-    status_log.append("🎯 Planner Agent: Analyzing topic and generating sub-questions...")
-
-    time.sleep(1)  # API pacing
+    status_log.append("🎯 Planner Agent: Analyzing topic and generating search strategy...")
 
     prompt = f"""You are a Senior Academic & Technical Research Planner.
-Analyze the following research topic and break it down into 4 clear sub-questions and 3 search engine queries.
+Analyze the following research topic and break it down into 4 clear sub-questions and 3 optimized search engine queries.
 
-Respond ONLY with a valid JSON object in this exact format (no markdown codeblocks, no extra text):
+Respond ONLY with a valid JSON object in this exact format (no markdown formatting, no extra text):
 {{
     "sub_questions": [
-        "First sub-question analyzing the core concepts of {topic}",
-        "Second sub-question exploring key developments and technologies",
-        "Third sub-question evaluating challenges or limitations",
+        "First sub-question analyzing core concepts of {topic}",
+        "Second sub-question exploring key technical developments",
+        "Third sub-question evaluating main challenges or limitations",
         "Fourth sub-question forecasting future outlook"
     ],
     "search_queries": [
-        "{topic} key developments 2026",
-        "{topic} applications challenges",
-        "{topic} future trends overview"
+        "sanitized key search query 1",
+        "sanitized key search query 2",
+        "sanitized key search query 3"
     ]
 }}
 
@@ -46,7 +45,6 @@ Research Topic: {topic}
     try:
         response = llm.invoke(prompt)
         content = response.content.strip()
-        # Clean potential markdown block formatting
         if content.startswith("```json"):
             content = content[7:]
         if content.startswith("```"):
@@ -57,25 +55,26 @@ Research Topic: {topic}
 
         data = json.loads(content)
         plan = PlannerOutput(**data)
-        sub_questions = plan.sub_questions
-        search_queries = plan.search_queries
-    except Exception as e:
-        # High quality dynamic fallback
-        clean_topic = topic.strip().rstrip('?')
-        sub_questions = [
+        
+        # Clean search queries of trailing punctuation for higher search accuracy
+        clean_sub_q = plan.sub_questions
+        clean_queries = [re.sub(r'[^\w\s-]', '', q).strip() for q in plan.search_queries]
+    except Exception:
+        clean_topic = re.sub(r'[^\w\s-]', '', topic).strip()
+        clean_sub_q = [
             f"What are the core concepts and current state of {clean_topic}?",
             f"What are the key technical developments driving {clean_topic}?",
             f"What major challenges and limitations exist in {clean_topic}?",
             f"What is the future outlook for {clean_topic}?"
         ]
-        search_queries = [
-            f"{clean_topic} key trends developments 2026",
+        clean_queries = [
+            f"{clean_topic} key trends developments",
             f"{clean_topic} challenges applications",
             f"{clean_topic} future outlook"
         ]
 
     return {
-        "sub_questions": sub_questions,
-        "search_queries": search_queries,
+        "sub_questions": clean_sub_q,
+        "search_queries": clean_queries,
         "status_log": status_log
     }

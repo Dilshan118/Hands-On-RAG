@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import streamlit as st
 
 # Add current directory to Python path
@@ -85,11 +86,11 @@ st.sidebar.info(
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📜 System Architecture")
-st.sidebar.caption("1. **Planner Node:** Sub-question decomposition\n2. **Research Node:** Hybrid RAG & Web Search\n3. **Writer Node:** Synthesis with inline citations\n4. **Critic Node:** Groundedness evaluation & dynamic loop")
+st.sidebar.caption("1. **Planner Node:** Sub-question decomposition\n2. **Research Node:** Parallel Web Search & Vector Store\n3. **Writer Node:** Synthesis with inline citations\n4. **Critic Node:** Groundedness evaluation & dynamic loop")
 
 # Main Title & Hero
 st.title("🤖 Agentic Research Assistant")
-st.caption("Autonomous Multi-Agent Collaboration Engine powered by LangGraph, Google Gemini, and Hybrid Retrieval.")
+st.caption("Autonomous Multi-Agent Collaboration Engine powered by LangGraph, Groq / Gemini, and Multi-Threaded Retrieval.")
 
 # PDF Ingestion Section (Optional Local RAG)
 with st.expander("📄 Upload Knowledge Base PDFs (Optional Local Vector Store RAG)", expanded=False):
@@ -118,13 +119,19 @@ with col1:
     start_button = st.button("🚀 Start Multi-Agent Research", type="primary", use_container_width=True)
 
 if start_button:
-    if not os.getenv("GOOGLE_API_KEY"):
+    current_provider = os.getenv("LLM_PROVIDER", "groq").lower()
+    if current_provider == "groq" and not os.getenv("GROQ_API_KEY"):
+        st.error("Please enter a valid Groq API Key in the sidebar to proceed.")
+        st.stop()
+    elif current_provider == "google" and not os.getenv("GOOGLE_API_KEY"):
         st.error("Please enter a valid Google Gemini API Key in the sidebar to proceed.")
         st.stop()
         
     if not topic.strip():
         st.warning("Please enter a research topic first.")
         st.stop()
+
+    start_time = time.time()
 
     # Progress Container
     status_container = st.status("🤖 Orchestrating Multi-Agent Workflow...", expanded=True)
@@ -150,32 +157,53 @@ if start_button:
         
         # Invoke Graph
         final_state = app_graph.invoke(initial_state)
+        elapsed_time = time.time() - start_time
         
         # Display Step-by-Step Execution Logs
         for log in final_state.get("status_log", []):
             status_container.write(log)
             
-        status_container.update(label="✅ Multi-Agent Workflow Completed!", state="complete", expanded=False)
+        status_container.update(label=f"✅ Multi-Agent Workflow Completed in {elapsed_time:.2f}s!", state="complete", expanded=False)
 
         # Tabs for Results
         tab_report, tab_sources, tab_metrics = st.tabs(["📝 Final Research Report", "🌐 Retrieved Evidence & Sources", "📊 Critic Metrics & State"])
         
         with tab_report:
-            st.markdown(final_state.get("final_report", "No report generated."))
+            report_text = final_state.get("final_report", "No report generated.")
+            st.markdown(report_text)
+            
+            # Export Download Button
+            st.download_button(
+                label="📥 Download Research Report (.md)",
+                data=report_text,
+                file_name=f"research_report_{topic[:20].strip().replace(' ', '_')}.md",
+                mime="text/markdown"
+            )
             
         with tab_sources:
-            st.subheader("Web Search Results")
-            for res in final_state.get("web_results", []):
-                st.markdown(f"- **[{res.get('title')}]({res.get('url')})**")
-                st.caption(res.get('snippet'))
+            st.subheader("🌐 Live Web Search Results")
+            web_res = final_state.get("web_results", [])
+            if web_res:
+                for res in web_res:
+                    st.markdown(f"### [{res.get('title')}]({res.get('url')})")
+                    st.caption(f"**Source URL:** `{res.get('url')}`")
+                    st.write(res.get('snippet'))
+                    st.markdown("---")
+            else:
+                st.info("No web results fetched.")
                 
-            st.subheader("Local Vector Store Documents")
-            for doc in final_state.get("retrieved_docs", []):
-                st.markdown(f"- **Source:** `{doc.get('source')}`")
-                st.caption(doc.get('content'))
+            st.subheader("📄 Local Vector Store Documents")
+            vec_docs = final_state.get("retrieved_docs", [])
+            if vec_docs:
+                for doc in vec_docs:
+                    st.markdown(f"- **Source File:** `{doc.get('source')}`")
+                    st.caption(doc.get('content'))
+            else:
+                st.info("No local vector store documents queried.")
 
         with tab_metrics:
             st.json({
+                "Total Execution Time": f"{elapsed_time:.2f} seconds",
                 "Critic Quality Score": f"{final_state.get('critic_score', 0.0):.2f}/1.00",
                 "Revision Iterations": final_state.get("revision_count", 0),
                 "Sub-questions Analyzed": final_state.get("sub_questions", []),

@@ -1,106 +1,129 @@
-# 🤖 Agentic Research Assistant — Multi-Agent Collaboration Engine
+# 🤖 Agentic Research Assistant
 
-A production-grade, stateful multi-agent research system built with **LangGraph**, **Groq Llama-3.3-70B**, **Google Gemini**, **ChromaDB**, and **Multi-Threaded DuckDuckGo Retrieval**.
+A **Stateful Autonomous Multi-Agent System** built with **LangGraph**, **Multi-Provider LLMs (Groq, Gemini, Ollama)**, and **Parallel Multi-Threaded Retrieval** that automates task planning, concurrent multi-source evidence retrieval, report synthesis, and hallucination fact-checking.
 
-The system replaces traditional monolithic LLM prompts with a network of specialized autonomous agents operating over a shared state graph with automated reflection and quality gates.
-
-> 🧠 **Architectural Specification:**
-> Read **[SYSTEM_ENGINEERING_GUIDE.md](SYSTEM_ENGINEERING_GUIDE.md)** for component breakdowns, state bus mutability, and design patterns.
->
-> 📘 **Technical Deep-Dive:**
-> Read **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)** for state machine logic, Pydantic schemas, and execution traces.
-
-<details>
-<summary><b>🖼️ Click to Expand Dashboard UI Preview</b></summary>
-<br>
-<p align="center">
-  <img src="docs/assets/ui_preview.png" alt="Agentic Research Assistant Dashboard" width="850"/>
-</p>
-</details>
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![LLM Engine](https://img.shields.io/badge/LLM_Engine-Groq_%7C_Gemini_%7C_Ollama-green.svg)](https://console.groq.com/)
+[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-purple.svg)](https://www.trychroma.com/)
+[![Pydantic v2](https://img.shields.io/badge/Validation-Pydantic_v2-red.svg)](https://docs.pydantic.dev/)
 
 ---
 
-## 🏗️ System Architecture & Graph Control Flow
+## 🧭 Learning Path & Documentation
+
+This project includes a **progressive learning curriculum** designed to take you from beginner to senior AI engineer:
+
+| Document | Level | Description |
+| :--- | :--- | :--- |
+| 📘 [**AGENTIC_TUTORIAL.md**](AGENTIC_TUTORIAL.md) | 🟢→⚫ Beginner to Expert | 5-level progressive guide: what agents are, how state graphs work, line-by-line code walkthrough, design patterns, and 12+ interview Q&As |
+| 🧠 [**SYSTEM_ENGINEERING_GUIDE.md**](SYSTEM_ENGINEERING_GUIDE.md) | 🔴→⚫ Advanced to Expert | Production engineering reference: state mutation traces, 5-layer architecture, failure modes catalog, performance analysis, deployment guide |
+| 📚 [**RAG_TUTORIAL.md**](../Modular_RAG_Pipeline/RAG_TUTORIAL.md) | 🟢→🟡 Beginner to Intermediate | Foundational RAG concepts: data ingestion, chunking, embeddings, vector databases |
+
+**Recommended reading order:**
+1. Start with `RAG_TUTORIAL.md` if you're new to RAG
+2. Read `AGENTIC_TUTORIAL.md` Levels 1-3 to understand the agent system
+3. Study the source code (richly documented with teaching comments)
+4. Read `AGENTIC_TUTORIAL.md` Levels 4-5 + `SYSTEM_ENGINEERING_GUIDE.md` for expert depth
+
+---
+
+## 🎯 Problem Solved
+
+Standard single-prompt LLM wrappers suffer from **static knowledge cutoffs**, **hallucinated facts**, and an **inability to verify their own outputs**. The Agentic Research Assistant solves this by engineering a stateful cyclic multi-agent graph that automates the entire research workflow:
 
 ```mermaid
 graph TD
     User([User Research Topic]) --> Planner[1. Planner Agent Node]
     Planner -->|Sanitized Queries| Research[2. Parallel Research Node]
-    
+  
     Research -->|Concurrent ThreadPool| DDG[DuckDuckGo Web Search API]
     Research -->|Semantic Vector Search| ChromaDB[ChromaDB Local Vector DB]
-    
+  
     DDG --> Writer[3. Writer / Synthesizer Agent Node]
     ChromaDB --> Writer
-    
+  
     Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Node]
-    
-    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.85?}
-    
+  
+    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.8?}
+  
     Evaluator -->|PASS| Finalizer[5. Finalizer Node]
     Evaluator -->|FAIL & Revisions < Max| Refiner[Query Refiner / Re-Query Loop]
     Refiner -->|Refined Queries| Research
     Evaluator -->|FAIL & Revisions >= Max| Finalizer
-    
+  
     Finalizer --> Output([Interactive Streamlit UI + Markdown Exporter])
 ```
 
 ---
 
-## 🧩 Component Breakdown
+## 📂 Project Structure
 
-### 1. Planner Agent (`src/agents/planner.py`)
-* **Role:** Task Decomposition & Query Optimization.
-* **Mechanism:** Takes the input topic and generates 4 sub-questions and sanitized 3-5 word search query strings using direct JSON prompting validated against `PlannerOutput` Pydantic schemas.
-
-### 2. Research Node (`src/agents/graph.py` & `src/tools/`)
-* **Role:** Multi-Source Hybrid Retrieval.
-* **Mechanism:** Concurrently executes DuckDuckGo web searches (`src/tools/web_search.py`) in parallel threads via Python `ThreadPoolExecutor` (reducing retrieval latency by 3x). Concurrently queries local `ChromaDB` vector storage (`src/tools/vector_store.py`) for uploaded PDF passages.
-
-### 3. Writer Agent (`src/agents/writer.py`)
-* **Role:** Context Synthesis & Citation Formatting.
-* **Mechanism:** Synthesizes retrieved evidence into a publication-grade Markdown report featuring executive summaries, bulleted key takeaways, comparison tables, inline numerical citations (`[1]`, `[2]`), and clickable references tables.
-
-### 4. Critic & Fact-Checker Node (`src/agents/critic.py`)
-* **Role:** Quality Evaluation & Reflection Gate.
-* **Mechanism:** Evaluates draft groundedness against source context. Assigns a quality score (`0.0 - 1.0`) validated via `CriticEvaluation`. If `score < 0.85` and `revision_count < MAX_REVISIONS`, triggers query refinement and loops back to retrieval.
-
-### 5. Multi-Provider Engine Factory (`config.py`)
-* **Role:** Provider-Agnostic LLM Abstraction.
-* **Mechanism:** Factory function (`get_llm`) supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`).
-
----
-
-## 🧰 Technical Stack & Dependencies
-
-* **State Graph Orchestration:** `LangGraph` (`StateGraph`, `END`)
-* **Language Model Engine:** Multi-Provider Abstraction (`langchain-groq`, `langchain-google-genai`, `langchain-community`)
-* **Concurrency:** Python `concurrent.futures.ThreadPoolExecutor`
-* **Vector Store:** `ChromaDB` (Persistent Client)
-* **Web Search:** `ddgs` (DuckDuckGo Search with HTTP scraper fallback)
-* **Data Contracts:** `Pydantic v2`
-* **Presentation Layer:** `Streamlit` (Dark Glassmorphism design system, custom Google Fonts `Outfit` & `Inter`, 4-column metric cards, execution latency timer, and Markdown exporter)
-* **Observability:** `LangSmith`
+```text
+Agentic_Research_Assistant/
+├── app.py                      # Streamlit UI Dashboard (Layer 1 - Presentation)
+├── config.py                   # Multi-Provider LLM Factory (Layer 5 - Infrastructure)
+├── requirements.txt            # Python dependencies
+├── .env                        # API keys (excluded from Git)
+├── chroma_db/                  # Persistent ChromaDB vector storage
+├── docs/assets/                # UI preview screenshots
+│
+├── src/
+│   ├── __init__.py
+│   ├── state.py                # ResearchState TypedDict schema (Layer 2 - Orchestration)
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   ├── graph.py            # LangGraph StateGraph assembly (Layer 2 - Orchestration)
+│   │   ├── planner.py          # Task decomposition agent (Layer 3 - Intelligence)
+│   │   ├── writer.py           # Report synthesis agent (Layer 3 - Intelligence)
+│   │   └── critic.py           # Quality evaluation agent (Layer 3 - Intelligence)
+│   └── tools/
+│       ├── __init__.py
+│       ├── web_search.py       # Multi-threaded DuckDuckGo search (Layer 4 - Retrieval)
+│       └── vector_store.py     # ChromaDB document retrieval (Layer 4 - Retrieval)
+│
+├── AGENTIC_TUTORIAL.md         # 📘 5-Level Learning Curriculum (Beginner → Expert)
+└── SYSTEM_ENGINEERING_GUIDE.md # 🧠 Senior Engineering Reference
+```
 
 ---
 
-## 🚀 Environment Setup & Local Execution
+## ⚙️ Core Engineering Specifications
 
-### 1. Install Dependencies
+| Component | Implementation | Key Detail |
+| :--- | :--- | :--- |
+| **Graph Orchestration** | LangGraph `StateGraph` over `ResearchState` TypedDict | Conditional edges route between revision loops and finalization |
+| **Concurrent Retrieval** | `ThreadPoolExecutor` with max 5 workers | **3x latency reduction** (~4.0s → ~1.5s) |
+| **LLM Factory** | Provider-agnostic factory supporting Groq, Gemini, Ollama | Automatic Groq → Gemini fallback |
+| **Schema Validation** | Direct JSON Prompting + Pydantic v2 models | Bypasses tool-calling rate limits |
+| **Quality Gate** | Critic Agent with 0.8 score threshold + MAX_REVISIONS cap | Dual-condition loop termination guarantee |
+| **UI Dashboard** | Streamlit with glassmorphism CSS design system | Real-time metrics, execution logs, Markdown export |
+
+---
+
+## 🚀 Quickstart
+
 ```bash
+# 1. Navigate to the project
 cd Agentic_Research_Assistant
+
+# 2. Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Configure Environment Variables
-Copy `.env.example` to `.env` and set your preferred provider key:
-```bash
+# 3. Configure API Key (get free key at console.groq.com)
 cp .env.example .env
-```
-* **Groq API Key (Recommended):** Set `GROQ_API_KEY=gsk_your_key` (Free key at [console.groq.com](https://console.groq.com/)).
-* **Google Gemini API Key:** Set `GOOGLE_API_KEY=your_key` (Free key at [aistudio.google.com](https://aistudio.google.com/)).
+# Edit .env: Set GROQ_API_KEY=gsk_your_key
 
-### 3. Launch Streamlit Application
-```bash
+# 4. Launch the dashboard
 streamlit run app.py
 ```
+
+---
+
+## 🔑 API Key Setup
+
+| Provider | How to Get Key | Cost |
+| :--- | :--- | :--- |
+| **Groq** (Recommended) | [console.groq.com](https://console.groq.com/) | Free (30 RPM, 14,400 RPD) |
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com/) | Free tier available |
+| **Ollama** (Local) | [ollama.com](https://ollama.com/) | Free (runs on your machine) |

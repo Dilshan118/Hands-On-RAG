@@ -12,6 +12,37 @@ This repository also contains a **Foundational RAG Study Module (`Modular RAG Pi
 
 ---
 
+## 🧭 Learning Path: Beginner → Senior AI Engineer
+
+This repository is designed as a **progressive learning curriculum**. Follow this path to go from zero to building production agentic AI systems:
+
+```mermaid
+graph TD
+    Start([🟢 Start Here]) --> RAG["📚 Step 1: RAG Fundamentals<br/>Modular_RAG_Pipeline/RAG_TUTORIAL.md"]
+    RAG --> Agent1["📘 Step 2: Agent Basics<br/>AGENTIC_TUTORIAL.md (Levels 1-2)"]
+    Agent1 --> Code["🔧 Step 3: Read the Source Code<br/>Every .py file has teaching comments"]
+    Code --> Agent2["📘 Step 4: Code Walkthrough<br/>AGENTIC_TUTORIAL.md (Level 3)"]
+    Agent2 --> Patterns["🔴 Step 5: Design Patterns<br/>AGENTIC_TUTORIAL.md (Level 4)"]
+    Patterns --> SysGuide["🧠 Step 6: Production Engineering<br/>SYSTEM_ENGINEERING_GUIDE.md"]
+    SysGuide --> Interview["⚫ Step 7: Interview Prep<br/>AGENTIC_TUTORIAL.md (Level 5)"]
+    Interview --> Expert([🏆 Senior AI Systems Engineer])
+
+    style Start fill:#10b981,color:#fff
+    style Expert fill:#6366f1,color:#fff
+```
+
+| Step | Document | Level | What You'll Learn |
+| :---: | :--- | :--- | :--- |
+| 1 | [RAG_TUTORIAL.md](Modular_RAG_Pipeline/RAG_TUTORIAL.md) | 🟢 Beginner | Data ingestion, chunking, embeddings, vector databases |
+| 2 | [AGENTIC_TUTORIAL.md](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md) L1-2 | 🟢🟡 Beginner | What agents are, state graphs, shared memory, reflection loops |
+| 3 | Source Code (all `.py` files) | 🟡 Intermediate | Every file has line-by-line teaching comments and docstrings |
+| 4 | [AGENTIC_TUTORIAL.md](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md) L3 | 🟠 Advanced | Line-by-line code walkthrough with design explanations |
+| 5 | [AGENTIC_TUTORIAL.md](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md) L4 | 🔴 Expert | Design patterns: Factory Method, Thread Pool, JSON Prompting, State Machine |
+| 6 | [SYSTEM_ENGINEERING_GUIDE.md](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md) | 🔴 Expert | State mutation traces, failure modes, performance analysis, deployment |
+| 7 | [AGENTIC_TUTORIAL.md](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md) L5 | ⚫ Senior | 12+ interview Q&As with model answers, system design exercise |
+
+---
+
 ## 📂 Repository Architecture & Hierarchy
 
 ```text
@@ -35,7 +66,7 @@ RAG/
 
 ## 🤖 1. Primary Project: Agentic Research Assistant
 
-📁 **[Explore Agentic Codebase](Agentic_Research_Assistant/)** \| 🧠 **[Senior Architecture Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[Technical Specification](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
+📁 **[Explore Agentic Codebase](Agentic_Research_Assistant/)** \| 🧠 **[Senior Architecture Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[5-Level Learning Curriculum](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
 
 <details>
 <summary><b>🖼️ Click to View Streamlit System Dashboard Preview</b></summary>
@@ -62,7 +93,7 @@ graph TD
   
     Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Node]
   
-    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.85?}
+    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.8?}
   
     Evaluator -->|PASS| Finalizer[5. Finalizer Node]
     Evaluator -->|FAIL & Revisions < Max| Refiner[Query Refiner / Re-Query Loop]
@@ -75,10 +106,11 @@ graph TD
 ### Core Engineering Specifications
 
 * **Stateful Graph Orchestration (`src/agents/graph.py`):** Uses `LangGraph` `StateGraph` over a shared mutable state (`ResearchState`). Conditional edge logic (`should_continue`) evaluates groundedness scores to dynamically route execution between revision loops and report finalization.
-* **Concurrent Retrieval Engine (`src/tools/web_search.py`):** Executes live DuckDuckGo web queries in parallel threads via Python `ThreadPoolExecutor`, reducing retrieval latency by **3x** (~4.0s to ~0.8s).
-* **Multi-Provider Model Factory (`config.py`):** Provider-agnostic factory function supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`).
+* **Concurrent Retrieval Engine (`src/tools/web_search.py`):** Executes live DuckDuckGo web queries in parallel threads via Python `ThreadPoolExecutor`, reducing retrieval latency by **3x** (~4.0s to ~1.5s).
+* **Multi-Provider Model Factory (`config.py`):** Provider-agnostic factory function supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`). Includes automatic Groq → Gemini fallback.
 * **Structured Output Validation:** Enforces strict Pydantic v2 schemas (`PlannerOutput`, `CriticEvaluation`) via direct JSON prompting to maintain contract safety without hitting API tool-calling rate limits.
 * **Interactive UI Dashboard (`app.py`):** Modern dark glassmorphism dashboard featuring real-time latency timers, 4-column metric cards (`Groundedness`, `Latency`, `Loops`, `Sources`), live execution logs, and a **Download Report (.md)** exporter.
+* **Richly Documented Codebase:** Every Python file contains comprehensive teaching docstrings explaining design patterns, architectural decisions, and beginner-friendly "why this exists" inline comments.
 
 ---
 
@@ -118,6 +150,7 @@ graph LR
 | **LLM Provider Engine**   | Single Model API                          | **Multi-Provider Factory (Groq, Gemini, Ollama)**    |
 | **Verification Gate**     | Static Context Grounding                  | **Automated Reflection Loop (`Critic Node`)**      |
 | **Schema Validation**     | String Chunks                             | **Pydantic v2 JSON Schema Enforcement**              |
+| **Code Documentation**    | Standard docstrings                       | **Teaching-grade docstrings with design rationale**  |
 
 ---
 

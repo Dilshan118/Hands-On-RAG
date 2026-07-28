@@ -177,6 +177,10 @@ def critic_agent_node(state: dict) -> dict:
     else:
         report_for_eval = draft_report
 
+    # Format web_results & vector docs concisely to prevent token bloat
+    compact_web = "\n".join([f"- {r.get('title', '')}: {r.get('snippet', '')[:200]}" for r in web_results[:5]])
+    compact_docs = "\n".join([f"- {d.get('source', '')}: {d.get('content', '')[:200]}" for d in retrieved_docs[:5]])
+
     prompt = f"""You are a rigorous Technical Peer Reviewer and Fact-Checker.
 Evaluate the following Draft Report against the provided Source Context on FIVE specific quality dimensions.
 
@@ -184,8 +188,11 @@ DRAFT REPORT:
 {report_for_eval}
 
 SOURCE CONTEXT:
-Web Results: {web_results[:5]}
-Vector Docs: {retrieved_docs[:5]}
+Web Results:
+{compact_web if compact_web else "None"}
+
+Vector Docs:
+{compact_docs if compact_docs else "None"}
 
 EVALUATION DIMENSIONS (score each 0.0-1.0, then compute weighted average):
 

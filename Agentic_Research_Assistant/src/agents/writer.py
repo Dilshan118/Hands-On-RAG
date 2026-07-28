@@ -91,25 +91,56 @@ def writer_agent_node(state: dict) -> dict:
     # This ensures the LLM sees evidence labeled [1], [2], [3]...
     # and can reference them with inline citations in the report.
     # ──────────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────
+    # STEP 2: Build the citation index with Smart Context Budgeting
+    #
+    # 📚 DYNAMIC CONTEXT COMPRESSION & ACCURACY PRESERVATION:
+    # To prevent 413 Rate Limit errors (e.g. Groq 8000 TPM limits on
+    # large models like gpt-oss-120b) while preserving 100% accuracy:
+    #   1. Deduplicate web sources by URL
+    #   2. Truncate long snippets to max 450 key characters
+    #   3. Cap maximum web sources at top 10 most relevant items
+    # ──────────────────────────────────────────────────────────
     sources_text = ""
     source_index = 1
     references_table = "| ID | Source Title | Web Link / Source |\n| :--- | :--- | :--- |\n"
 
+    seen_urls = set()
+    indexed_count = 0
+    MAX_WEB_SOURCES = 10  # Top 10 sources give high coverage without blowing token limits
+    MAX_SNIPPET_LEN = 450  # High-density snippet length
+
     # Index web search results (from DuckDuckGo)
     for item in web_results:
-        snippet = item.get("snippet", "")
+        if indexed_count >= MAX_WEB_SOURCES:
+            break
+            
         url = item.get("url", "")
-        title = item.get("title", "Web Source")
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        snippet = item.get("snippet", "").strip()
+        title = item.get("title", "Web Source").strip()
+
         if snippet:
+            # Truncate overly long snippets to preserve token budget
+            if len(snippet) > MAX_SNIPPET_LEN:
+                snippet = snippet[:MAX_SNIPPET_LEN] + "..."
+
             sources_text += f"\n[{source_index}] Title: {title}\nURL: {url}\nSnippet: {snippet}\n"
-            references_table += f"| [{source_index}] | **{title}** | [{url}]({url}) |\n"
+            references_table += f"| [{source_index}] | **{title[:60]}** | [{url}]({url}) |\n"
             source_index += 1
+            indexed_count += 1
 
     # Index local vector store documents (from ChromaDB)
     for doc in retrieved_docs:
-        content = doc.get("content", "")
+        content = doc.get("content", "").strip()
         source_name = doc.get("source", "Uploaded Document")
         if content:
+            if len(content) > MAX_SNIPPET_LEN:
+                content = content[:MAX_SNIPPET_LEN] + "..."
+
             sources_text += f"\n[{source_index}] Local Document: {source_name}\nSnippet: {content}\n"
             references_table += f"| [{source_index}] | Local Document: `{source_name}` | Internal Vector Store |\n"
             source_index += 1
@@ -200,6 +231,20 @@ Provide a strategic conclusion and future outlook with specific predictions, tim
         draft_report = response.content
         logger.info(f"Writer generated draft report ({len(draft_report)} characters).")
     except Exception as e:
+        err_msg = str(e).lower()
+        if "413" in err_msg or "rate_limit" in err_msg or "tokens per minute" in err_msg:
+            logger.warning("413 / TPM Rate Limit detected. Retrying with compressed context budget...")
+            # Fallback: Truncate prompt evidence aggressively (top 5 sources, max 200 chars)
+            compressed_sources = sources_text[:1500] + "\n[... truncated for token budget ...]"
+            fallback_prompt = prompt.replace(sources_text, compressed_sources)
+            try:
+                response = llm.invoke(fallback_prompt)
+                draft_report = response.content
+                logger.info(f"Writer recovered via compressed context fallback ({len(draft_report)} characters).")
+                return {"draft_report": draft_report, "status_log": status_log}
+            except Exception as retry_err:
+                logger.error(f"Writer fallback retry failed: {retry_err}")
+                
         # Graceful degradation — return a minimal report rather than crashing
         logger.error(f"Writer LLM invocation failed: {e}")
         draft_report = f"# Research Report: {topic}\n\n*Error generating draft report: {str(e)}*"

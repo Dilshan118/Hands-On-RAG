@@ -151,8 +151,16 @@ if "Groq" in provider:
         
     selected_model = st.sidebar.selectbox(
         "Model",
-        options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
-        index=0
+        options=[
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "groq/compound",
+            "groq/compound-mini",
+        ],
+        index=0,
+        help="All models are free on your Groq API key."
     )
     os.environ["GROQ_MODEL"] = selected_model
 
@@ -320,7 +328,11 @@ if start_button:
         with tab_report:
             report_text = final_state.get("final_report", "No report generated.")
             st.markdown(report_text)
-            
+
+            # Store report in session state for the deep dive feature
+            st.session_state["last_report"] = report_text
+            st.session_state["last_final_state"] = final_state
+
             st.markdown("<br>", unsafe_allow_html=True)
             st.download_button(
                 label="📥 Download Research Report (.md)",
@@ -328,6 +340,126 @@ if start_button:
                 file_name=f"research_report_{topic[:20].strip().replace(' ', '_')}.md",
                 mime="text/markdown"
             )
+
+            # ──────────────────────────────────────────────────────────
+            # DEEP DIVE: Highlight → Research Again
+            # User can select any claim from the report above, paste it
+            # here, and the agentic pipeline runs a focused deep-dive
+            # research cycle on just that specific claim.
+            # ──────────────────────────────────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.5rem; margin-top: 1rem;">
+                <h3 style="margin: 0 0 0.25rem 0;">🔍 Deep Dive Research</h3>
+                <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;">
+                    Copy any claim or statement from the report above and paste it below. The full agentic pipeline will run again to investigate that specific claim in depth.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            deep_dive_claim = st.text_area(
+                "Paste a claim or statement to deep dive into:",
+                placeholder='e.g., "DeepSeek-V3 scores 87.1 on MMLU, surpassing most proprietary models"',
+                height=100,
+                key="deep_dive_input"
+            )
+
+            col_dd_btn, col_dd_blank = st.columns([1, 3])
+            with col_dd_btn:
+                deep_dive_button = st.button("🔬 Deep Dive Into This Claim", type="secondary", use_container_width=True)
+
+            if deep_dive_button:
+                if not deep_dive_claim.strip():
+                    st.warning("Please paste a claim or statement to investigate.")
+                else:
+                    dd_start_time = time.time()
+                    dd_topic = f"Investigate and verify this specific claim in depth: \"{deep_dive_claim.strip()}\""
+
+                    dd_status = st.status("🔬 Running Deep Dive Agent Graph on selected claim...", expanded=True)
+
+                    dd_initial_state = {
+                        "topic": dd_topic,
+                        "sub_questions": [],
+                        "search_queries": [],
+                        "retrieved_docs": [],
+                        "web_results": [],
+                        "draft_report": "",
+                        "critic_score": 0.0,
+                        "critic_feedback": "",
+                        "revision_count": 0,
+                        "final_report": "",
+                        "status_log": []
+                    }
+
+                    try:
+                        dd_graph = create_research_graph()
+                        dd_final_state = dd_graph.invoke(dd_initial_state)
+                        dd_elapsed = time.time() - dd_start_time
+
+                        for log in dd_final_state.get("status_log", []):
+                            dd_status.write(log)
+
+                        dd_status.update(label=f"✅ Deep Dive Completed in {dd_elapsed:.2f}s!", state="complete", expanded=False)
+
+                        # Store deep dive results in session state
+                        st.session_state["deep_dive_result"] = dd_final_state
+                        st.session_state["deep_dive_elapsed"] = dd_elapsed
+                        st.session_state["deep_dive_claim"] = deep_dive_claim.strip()
+
+                    except Exception as e:
+                        dd_status.update(label="❌ Deep Dive Error", state="error", expanded=True)
+                        st.error(f"Deep Dive Error: {str(e)}")
+
+            # Display Deep Dive Results (persisted in session state)
+            if "deep_dive_result" in st.session_state:
+                dd_state = st.session_state["deep_dive_result"]
+                dd_elapsed = st.session_state.get("deep_dive_elapsed", 0)
+                dd_claim = st.session_state.get("deep_dive_claim", "")
+
+                st.markdown(f"""
+                <div style="border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 14px; padding: 1.25rem; margin-top: 1.5rem; background: rgba(99, 102, 241, 0.05);">
+                    <h3 style="margin: 0 0 0.5rem 0; color: #a5b4fc;">🔬 Deep Dive Results</h3>
+                    <p style="color: #8b949e; font-size: 0.85rem; margin-bottom: 1rem;"><b>Claim Investigated:</b> <em>"{dd_claim}"</em></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Deep Dive Metrics
+                dd_m1, dd_m2, dd_m3 = st.columns(3)
+                with dd_m1:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-val">{dd_state.get('critic_score', 0.0):.2f}</div>
+                        <div class="metric-lbl">Deep Dive Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with dd_m2:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-val">{dd_elapsed:.2f}s</div>
+                        <div class="metric-lbl">Deep Dive Latency</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with dd_m3:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-val">{len(dd_state.get('web_results', []))}</div>
+                        <div class="metric-lbl">New Sources Found</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                # Deep Dive Report
+                dd_report = dd_state.get("final_report", "No deep dive report generated.")
+                st.markdown(dd_report)
+
+                st.download_button(
+                    label="📥 Download Deep Dive Report (.md)",
+                    data=dd_report,
+                    file_name=f"deep_dive_{dd_claim[:30].strip().replace(' ', '_')}.md",
+                    mime="text/markdown",
+                    key="dd_download"
+                )
             
         with tab_sources:
             st.subheader("🌐 Live Web Search Evidence")

@@ -160,20 +160,59 @@ def critic_agent_node(state: dict) -> dict:
     # STEP 2: Construct the Critic evaluation prompt
     #
     # KEY DECISIONS:
-    # - draft_report[:3000] → truncate to avoid prompt overflow
+    # - We send BOTH the beginning AND end of the report to catch
+    #   weak comparison tables at the bottom (previous truncation
+    #   at 3000 chars missed the comparison table entirely)
     # - web_results[:5] → limit context to prevent token waste
     # - The JSON template shows EXACTLY what we expect back
     # - temperature=0.1 → very low randomness for consistent scoring
+    # - 5-DIMENSION EVALUATION prevents the Critic from being too
+    #   lenient on vague, generic, or repetitive reports
     # ──────────────────────────────────────────────────────────
-    prompt = f"""You are a rigorous Academic Fact-Checker and Peer Reviewer.
-Evaluate the following Draft Report against the provided Source Context.
+
+    # Build a smart truncation that captures both beginning AND end of report
+    # This ensures the Critic sees the Executive Summary AND the Comparison Table
+    if len(draft_report) > 4000:
+        report_for_eval = draft_report[:2500] + "\n\n[... middle content truncated for evaluation ...]\n\n" + draft_report[-1500:]
+    else:
+        report_for_eval = draft_report
+
+    prompt = f"""You are a rigorous Technical Peer Reviewer and Fact-Checker.
+Evaluate the following Draft Report against the provided Source Context on FIVE specific quality dimensions.
 
 DRAFT REPORT:
-{draft_report[:3000]}
+{report_for_eval}
 
 SOURCE CONTEXT:
 Web Results: {web_results[:5]}
 Vector Docs: {retrieved_docs[:5]}
+
+EVALUATION DIMENSIONS (score each 0.0-1.0, then compute weighted average):
+
+1. GROUNDEDNESS (weight 25%): Are factual claims supported by the provided source evidence?
+   - Deduct points for claims with no matching source citation.
+   - Check that inline citation numbers [1], [2] correspond to real sources.
+
+2. SPECIFICITY (weight 20%): Does the report name SPECIFIC entities (technologies, products, organizations, standards, people, frameworks)?
+   - Deduct 0.2 if the report relies on vague collective terms (e.g., "various companies", "many tools", "some solutions") without naming concrete examples.
+   - A good report names at least 3-4 specific entities per category being discussed.
+
+3. QUANTITATIVE RIGOR (weight 15%): Does the report include measurable data?
+   - Look for: statistics, performance metrics, market figures, adoption rates, costs, timelines, percentages, or benchmark scores.
+   - Deduct 0.25 if the report contains ZERO quantitative data points.
+
+4. FACTUAL ACCURACY (weight 15%): Are technical claims and categorizations correct?
+   - Check for: incorrect classifications, conflated categories, outdated information presented as current, or misattributed claims.
+   - Cross-reference claims against the provided source context.
+
+5. TABLE QUALITY (weight 10%): If a comparison table exists, does it have DIFFERENTIATED values per row?
+   - Deduct 0.3 if all rows have identical or near-identical ratings/labels.
+   - A good table has distinct, specific values that meaningfully distinguish each entry.
+
+6. COVERAGE COMPLETENESS (weight 15%): Does the report cover ALL major players and perspectives from different global regions and ecosystems?
+   - Deduct 0.2 if the report only covers entities from ONE geographic region (e.g., only US companies) while the topic has significant global contributors.
+   - Check for missing major players from China, Europe, Asia, or other regions that are relevant to the topic.
+   - If coverage gaps exist, provide revised_search_queries that explicitly name the missing entities or regions.
 
 Respond ONLY with a valid JSON object in this exact format (no markdown formatting, no extra text):
 {{
@@ -181,7 +220,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown formatti
     "score": 0.85,
     "hallucinated_claims": [],
     "missing_topics": [],
-    "feedback": "Report meets academic research quality criteria and is grounded in sources.",
+    "feedback": "Detailed review with specific instructions for improvement. If major global players or regions are missing, explicitly name them here.",
     "revised_search_queries": []
 }}
 """

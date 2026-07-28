@@ -118,21 +118,32 @@ def planner_agent_node(state: dict) -> dict:
     # - "no markdown formatting, no extra text" → prevents ```json wrappers
     #   (though we still handle them in the parsing step as a safety net)
     # ──────────────────────────────────────────────────────────
-    prompt = f"""You are a Senior Academic & Technical Research Planner.
-Analyze the following research topic and break it down into 4 clear sub-questions and 3 optimized search engine queries.
+    prompt = f"""You are a Senior Technical Research Planner specializing in precise, evidence-driven research decomposition.
+Analyze the following research topic and break it down into 4 targeted sub-questions and 4 optimized search engine queries.
+
+CRITICAL PLANNING RULES:
+1. Sub-questions MUST target SPECIFIC entities relevant to the topic (name exact technologies, products, organizations, people, frameworks, standards, or versions — avoid vague generalities).
+2. Sub-questions MUST request QUANTITATIVE or MEASURABLE data where applicable (statistics, benchmarks, performance metrics, market data, adoption rates, timelines, costs).
+3. At least one sub-question must focus on real-world APPLICATIONS, USE CASES, or practical trade-offs.
+4. At least one sub-question must address RECENT developments or the current state of the art (prefer 2024-2026 timeframe).
+5. Search queries MUST include specific entity names, technical terms, or comparison keywords — NOT broad topic paraphrases.
+6. Search queries should be designed to surface authoritative primary sources (research papers, official documentation, industry reports, technical benchmarks) over generic blog posts.
+7. COMPREHENSIVE GLOBAL COVERAGE: Sub-questions must consider ALL major players and perspectives — including entities from different geographic regions, organizations, and ecosystems (e.g., US, Europe, China, open-source communities). Do NOT focus only on Western/English-language entities. If a field has significant contributors from Asia, Europe, or other regions, they MUST be explicitly included.
+8. At least one search query MUST explicitly target entities or developments from underrepresented ecosystems to counteract English-language search engine bias. For example, if the topic involves technology, include queries naming specific Chinese, European, or other non-US entities.
 
 Respond ONLY with a valid JSON object in this exact format (no markdown formatting, no extra text):
 {{
     "sub_questions": [
-        "First sub-question analyzing core concepts of {topic}",
-        "Second sub-question exploring key technical developments",
-        "Third sub-question evaluating main challenges or limitations",
-        "Fourth sub-question forecasting future outlook"
+        "First sub-question naming SPECIFIC entities and requesting concrete comparison or performance data about {topic}",
+        "Second sub-question exploring the LATEST technical developments, breakthroughs, or standards with specific names and dates",
+        "Third sub-question evaluating real-world applications, trade-offs, costs, or practical limitations with concrete examples",
+        "Fourth sub-question covering GLOBAL perspectives — including entities from different regions, organizations, and ecosystems that are significant to {topic}"
     ],
     "search_queries": [
-        "sanitized key search query 1",
-        "sanitized key search query 2",
-        "sanitized key search query 3"
+        "specific entity or technology comparison data query 1",
+        "specific entity vs entity performance or benchmark query 2",
+        "specific entity latest developments or applications query 3",
+        "specific underrepresented region or ecosystem entity query 4"
     ]
 }}
 

@@ -1,11 +1,10 @@
 # ⚡ Distributed RAG & Multi-Agent Systems Engineering Portfolio
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Orchestration: LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
-[![Provider: Multi--Model](https://img.shields.io/badge/LLM Engine-Groq %7C Gemini %7C Ollama-green.svg)](https://console.groq.com/)
-[![Concurrency: ThreadPool](https://img.shields.io/badge/Retrieval-Multi--Threaded%20Execution-brightgreen.svg)]()
-[![Vector DB: ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-purple.svg)](https://www.trychroma.com/)
-[![Schemas: Pydantic v2](https://img.shields.io/badge/Validation-Pydantic%20v2-red.svg)](https://docs.pydantic.dev/)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![LLM Engine](https://img.shields.io/badge/LLM_Engine-Groq_%7C_Gemini_%7C_Ollama-green.svg)](https://console.groq.com/)
+[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-purple.svg)](https://www.trychroma.com/)
+[![Pydantic v2](https://img.shields.io/badge/Validation-Pydantic_v2-red.svg)](https://docs.pydantic.dev/)
 
 A software engineering repository demonstrating system designs for **heterogeneous data ingestion pipelines**, **dense-sparse hybrid vector retrieval**, and **autonomous stateful multi-agent graphs with dynamic reflection loops**.
 

@@ -3,7 +3,6 @@ from typing import List, Union, Optional
 import numpy as np
 from dotenv import load_dotenv, find_dotenv
 
-# Search parent folders for .env if executing from subdirectories like NoteBook/
 load_dotenv(find_dotenv(), override=True)
 
 class EmbeddingManager:
@@ -14,7 +13,7 @@ class EmbeddingManager:
         Args:
             provider: 'local' (HuggingFace) or 'google' (Google Gemini API)
             model_name: Model name. Defaults to 'all-MiniLM-L6-v2' for local,
-                        or 'models/gemini-embedding-001' for Google.
+                        or 'models/gemini-embedding-001' / 'text-embedding-004' for Google.
             dimension: Optional target vector dimension (e.g. 1024 for Pinecone).
         """
         self.provider = provider.lower()
@@ -65,15 +64,30 @@ class EmbeddingManager:
             print(f"❌ Error initializing Google model {self.model_name}: {e}")
             raise
 
+    def _adjust_dimension(self, vector: List[float]) -> List[float]:
+        """Adjusts vector dimensionality to match self.dimension if specified."""
+        if not self.dimension or len(vector) == self.dimension:
+            return vector
+        
+        # Truncate if vector is longer than target dimension
+        if len(vector) > self.dimension:
+            return vector[:self.dimension]
+        
+        # Zero-pad if vector is shorter than target dimension
+        padded = vector + [0.0] * (self.dimension - len(vector))
+        return padded
+
     def generate_embedding(self, text: str) -> List[float]:
         """Generate a vector embedding for a single text query"""
         if not self.model:
             raise ValueError("Model is not initialized.")
             
         if self.provider == "local":
-            return self.model.encode(text).tolist()
+            raw_vec = self.model.encode(text).tolist()
         elif self.provider == "google":
-            return self.model.embed_query(text)
+            raw_vec = self.model.embed_query(text)
+            
+        return self._adjust_dimension(raw_vec)
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate vector embeddings for a list of text chunks"""
@@ -81,6 +95,8 @@ class EmbeddingManager:
             raise ValueError("Model is not initialized.")
             
         if self.provider == "local":
-            return self.model.encode(texts, show_progress_bar=True).tolist()
+            raw_vecs = self.model.encode(texts, show_progress_bar=True).tolist()
         elif self.provider == "google":
-            return self.model.embed_documents(texts)
+            raw_vecs = self.model.embed_documents(texts)
+            
+        return [self._adjust_dimension(v) for v in raw_vecs]

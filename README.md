@@ -136,11 +136,12 @@ cp .env.example .env
 streamlit run app.py
 ```
 
-### 2. Launch Foundational RAG Study Project
+### 2. Launch Foundational RAG Study App
 
 ```bash
 cd Modular_RAG_Pipeline
 pip install -r requirements.txt
 
-jupyter notebook NoteBook/document.ipynb
+# Launch interactive RAG web workbench
+streamlit run app.py
 ```

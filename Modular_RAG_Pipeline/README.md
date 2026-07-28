@@ -49,12 +49,18 @@ Modular_RAG_Pipeline/
 
 ---
 
-## 🚀 Quickstart & Notebook Execution
+## 🚀 Interactive Web Dashboard & Execution
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Option 1: Launch Interactive Streamlit Web App (Recommended)
+```bash
+cd Modular_RAG_Pipeline
+pip install -r requirements.txt
+streamlit run app.py
+```
+* **Ingestion Workbench:** Drag-and-drop PDFs, CSVs, or TXT files.
+* **Vector Inspector:** Test top-$k$ semantic vector search queries against `ChromaDB` or `Pinecone` with similarity scores.
 
-2. **Execute Ingestion & Search Pipeline**:
-   Open [`NoteBook/document.ipynb`](NoteBook/document.ipynb) in Jupyter Notebook / VS Code, select your `rag_env` kernel, and run the pipeline cells.
+### Option 2: Execute Ingestion & Search via Jupyter Notebook
+```bash
+jupyter notebook NoteBook/document.ipynb
+```

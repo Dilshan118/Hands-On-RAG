@@ -14,7 +14,7 @@ The system replaces traditional monolithic LLM prompts with a network of special
 <summary><b>🖼️ Click to Expand Dashboard UI Preview</b></summary>
 <br>
 <p align="center">
-  <img src="docs/assets/ui_preview.png" alt="Agentic Research Assistant Dashboard" width="850"/>
+  <img src="docs/ui_preview.png" alt="Agentic Research Assistant Dashboard" width="850"/>
 </p>
 </details>
 

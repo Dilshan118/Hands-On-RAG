@@ -48,7 +48,7 @@ RAG/
 
 ## 🤖 Sub-Project 1: Agentic Research Assistant (Featured System)
 
-📁 **[Explore Agentic Sub-Project](Agentic_Research_Assistant/)** \| 📘 **[Read Deep-Dive Agentic Tutorial](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
+📁 **[Explore Agentic Sub-Project](Agentic_Research_Assistant/)** \| 🧠 **[Senior Engineering Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[Technical Tutorial](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
 
 ### System Overview & Problem Solved
 

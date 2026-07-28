@@ -5,8 +5,11 @@ A production-grade, multi-agent research engine built with **LangGraph**, **Goog
 
 Unlike traditional single-prompt LLM wrappers, this system deploys an autonomous network of specialized agents operating over a shared state graph with dynamic self-correction and fact-checking reflection loops.
 
-> 📘 **Looking for the deep-dive technical tutorial & code breakdown?**
-> Read the complete reference guide: **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)** (covering LangGraph state graphs, Pydantic schemas, reflection loops, and interview questions).
+> 🧠 **Thinking like a Senior AI Engineer?**
+> Read the complete architectural breakdown: **[SYSTEM_ENGINEERING_GUIDE.md](SYSTEM_ENGINEERING_GUIDE.md)** (covering state buses, line-by-line codebase anatomy, and mental models).
+>
+> 📘 **Looking for the deep-dive technical tutorial & interview questions?**
+> Read the complete reference guide: **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)**.
 
 ---
 

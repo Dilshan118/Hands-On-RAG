@@ -10,6 +10,14 @@ The system replaces traditional monolithic LLM prompts with a network of special
 > 📘 **Technical Deep-Dive:**
 > Read **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)** for state machine logic, Pydantic schemas, and execution traces.
 
+<details>
+<summary><b>🖼️ Click to Expand Dashboard UI Preview</b></summary>
+<br>
+<p align="center">
+  <img src="docs/assets/ui_preview.png" alt="Agentic Research Assistant Dashboard" width="850"/>
+</p>
+</details>
+
 ---
 
 ## 🏗️ System Architecture & Graph Control Flow
@@ -71,7 +79,7 @@ graph TD
 * **Vector Store:** `ChromaDB` (Persistent Client)
 * **Web Search:** `ddgs` (DuckDuckGo Search with HTTP scraper fallback)
 * **Data Contracts:** `Pydantic v2`
-* **Presentation Layer:** `Streamlit` (Real-time latency timer & Markdown file exporter)
+* **Presentation Layer:** `Streamlit` (Dark Glassmorphism design system, custom Google Fonts `Outfit` & `Inter`, 4-column metric cards, execution latency timer, and Markdown exporter)
 * **Observability:** `LangSmith`
 
 ---

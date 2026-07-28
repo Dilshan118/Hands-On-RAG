@@ -23,6 +23,14 @@ A software engineering repository demonstrating system designs for **heterogeneo
 
 📁 **[System Architecture Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[Technical Specification](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
 
+<details>
+<summary><b>🖼️ Click to Expand Streamlit Dashboard Preview</b></summary>
+<br>
+<p align="center">
+  <img src="Agentic_Research_Assistant/docs/assets/ui_preview.png" alt="Agentic Research Assistant Dashboard" width="850"/>
+</p>
+</details>
+
 ### System Context & Problem Statement
 Single-step LLM retrieval pipelines suffer from three fundamental engineering limitations:
 1. **Knowledge Cutoffs & Static Blind Spots:** Inability to retrieve real-time web facts.

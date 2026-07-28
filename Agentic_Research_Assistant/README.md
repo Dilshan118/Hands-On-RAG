@@ -1,68 +1,82 @@
 # 🤖 Agentic Research Assistant — Multi-Agent Collaboration Engine
 
-A production-grade, multi-agent research engine built with **LangGraph**, **Groq Llama-3.3-70B**, **Google Gemini**, **ChromaDB**, and **Multi-Threaded DuckDuckGo Web Search**.
+A production-grade, stateful multi-agent research system built with **LangGraph**, **Groq Llama-3.3-70B**, **Google Gemini**, **ChromaDB**, and **Multi-Threaded DuckDuckGo Retrieval**.
 
-Unlike traditional single-prompt LLM wrappers, this system deploys an autonomous network of specialized agents operating over a shared state graph with dynamic self-correction and fact-checking reflection loops.
+The system replaces traditional monolithic LLM prompts with a network of specialized autonomous agents operating over a shared state graph with automated reflection and quality gates.
 
-> 🧠 **Thinking like a Senior AI Engineer?**
-> Read the complete architectural breakdown: **[SYSTEM_ENGINEERING_GUIDE.md](SYSTEM_ENGINEERING_GUIDE.md)** (covering state buses, line-by-line codebase anatomy, and mental models).
+> 🧠 **Architectural Specification:**
+> Read **[SYSTEM_ENGINEERING_GUIDE.md](SYSTEM_ENGINEERING_GUIDE.md)** for component breakdowns, state bus mutability, and design patterns.
 >
-> 📘 **Looking for the deep-dive technical tutorial & interview practice questions?**
-> Read the complete reference guide: **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)**.
+> 📘 **Technical Deep-Dive:**
+> Read **[AGENTIC_TUTORIAL.md](AGENTIC_TUTORIAL.md)** for state machine logic, Pydantic schemas, and execution traces.
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture & Graph Control Flow
 
 ```mermaid
 graph TD
-    User([User Research Topic]) --> Planner[1. Planner Agent]
-    Planner -->|Sanitized Queries| Research[2. Research Agent]
+    User([User Research Topic]) --> Planner[1. Planner Agent Node]
+    Planner -->|Sanitized Queries| Research[2. Parallel Research Node]
     
-    Research -->|Parallel Multi-Threaded Search| DDG[DuckDuckGo Web Search API]
-    Research -->|Vector Search| ChromaDB[ChromaDB Local Vector DB]
+    Research -->|Concurrent ThreadPool| DDG[DuckDuckGo Web Search API]
+    Research -->|Semantic Vector Search| ChromaDB[ChromaDB Local Vector DB]
     
-    DDG --> Writer[3. Writer / Synthesizer Agent]
+    DDG --> Writer[3. Writer / Synthesizer Agent Node]
     ChromaDB --> Writer
     
-    Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Agent]
+    Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Node]
     
-    Critic -->|Grade Score| Evaluator{Score >= 0.85?}
+    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.85?}
     
-    Evaluator -->|YES| Finalizer[5. Finalizer Node]
-    Evaluator -->|NO & Revisions < Max| Refiner[Query Refiner / Loop]
+    Evaluator -->|PASS| Finalizer[5. Finalizer Node]
+    Evaluator -->|FAIL & Revisions < Max| Refiner[Query Refiner / Re-Query Loop]
     Refiner -->|Refined Queries| Research
-    Evaluator -->|NO & Revisions >= Max| Finalizer
+    Evaluator -->|FAIL & Revisions >= Max| Finalizer
     
-    Finalizer --> Output([Interactive Streamlit UI + Markdown Export])
+    Finalizer --> Output([Interactive Streamlit UI + Markdown Exporter])
 ```
 
 ---
 
-## 🧩 Agent Roles & Key Features
+## 🧩 Component Breakdown
 
-1. **Planner Agent:** Uses Pydantic structured schemas and query sanitization to decompose complex topics into 4 sub-questions and search engine queries.
-2. **Research Agent Node:** Executes parallel multi-threaded retrieval using `ThreadPoolExecutor` across live web APIs (`ddgs`) and local vector stores (`ChromaDB`), reducing latency from ~4s to ~0.8s (3x speedup).
-3. **Writer / Synthesizer Agent:** Generates publication-grade Markdown reports with executive summaries, key technical takeaways, comparison tables, and clickable inline reference links (`[1]`, `[2]`).
-4. **Critic & Fact-Checker Agent:** Evaluates draft groundedness against context, detects hallucinations, assigns a quality score (0.0 to 1.0), and triggers revision loops if necessary.
-5. **Multi-Provider Engine Factory:** Supports instant switching between **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`).
+### 1. Planner Agent (`src/agents/planner.py`)
+* **Role:** Task Decomposition & Query Optimization.
+* **Mechanism:** Takes the input topic and generates 4 sub-questions and sanitized 3-5 word search query strings using direct JSON prompting validated against `PlannerOutput` Pydantic schemas.
+
+### 2. Research Node (`src/agents/graph.py` & `src/tools/`)
+* **Role:** Multi-Source Hybrid Retrieval.
+* **Mechanism:** Concurrently executes DuckDuckGo web searches (`src/tools/web_search.py`) in parallel threads via Python `ThreadPoolExecutor` (reducing retrieval latency by 3x). Concurrently queries local `ChromaDB` vector storage (`src/tools/vector_store.py`) for uploaded PDF passages.
+
+### 3. Writer Agent (`src/agents/writer.py`)
+* **Role:** Context Synthesis & Citation Formatting.
+* **Mechanism:** Synthesizes retrieved evidence into a publication-grade Markdown report featuring executive summaries, bulleted key takeaways, comparison tables, inline numerical citations (`[1]`, `[2]`), and clickable references tables.
+
+### 4. Critic & Fact-Checker Node (`src/agents/critic.py`)
+* **Role:** Quality Evaluation & Reflection Gate.
+* **Mechanism:** Evaluates draft groundedness against source context. Assigns a quality score (`0.0 - 1.0`) validated via `CriticEvaluation`. If `score < 0.85` and `revision_count < MAX_REVISIONS`, triggers query refinement and loops back to retrieval.
+
+### 5. Multi-Provider Engine Factory (`config.py`)
+* **Role:** Provider-Agnostic LLM Abstraction.
+* **Mechanism:** Factory function (`get_llm`) supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`).
 
 ---
 
-## 🧰 Tech Stack
+## 🧰 Technical Stack & Dependencies
 
-* **Graph Orchestration:** `LangGraph`
-* **LLM Engine:** Multi-Provider support (**Groq**, **Google Gemini**, **Ollama**)
-* **Concurrency:** Python `concurrent.futures.ThreadPoolExecutor` (3x Faster Retrieval)
-* **Vector Store:** `ChromaDB` (Local persistence)
-* **Web Search:** `ddgs` (Live DuckDuckGo scraper with HTTP fallback)
-* **Data Validation:** `Pydantic v2`
-* **UI Framework:** `Streamlit` (Includes real-time timer & Markdown report exporter)
+* **State Graph Orchestration:** `LangGraph` (`StateGraph`, `END`)
+* **Language Model Engine:** Multi-Provider Abstraction (`langchain-groq`, `langchain-google-genai`, `langchain-community`)
+* **Concurrency:** Python `concurrent.futures.ThreadPoolExecutor`
+* **Vector Store:** `ChromaDB` (Persistent Client)
+* **Web Search:** `ddgs` (DuckDuckGo Search with HTTP scraper fallback)
+* **Data Contracts:** `Pydantic v2`
+* **Presentation Layer:** `Streamlit` (Real-time latency timer & Markdown file exporter)
 * **Observability:** `LangSmith`
 
 ---
 
-## 🚀 Quickstart Guide
+## 🚀 Environment Setup & Local Execution
 
 ### 1. Install Dependencies
 ```bash
@@ -71,25 +85,14 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configure Environment Variables
-Copy `.env.example` to `.env` and insert your free Groq or Gemini API key:
+Copy `.env.example` to `.env` and set your preferred provider key:
 ```bash
 cp .env.example .env
 ```
-* Get a **100% Free Groq Key** at [console.groq.com](https://console.groq.com/) (Recommended: High quotas, no rate limit issues!).
-* Get a free Gemini key at [Google AI Studio](https://aistudio.google.com/).
+* **Groq API Key (Recommended):** Set `GROQ_API_KEY=gsk_your_key` (Free key at [console.groq.com](https://console.groq.com/)).
+* **Google Gemini API Key:** Set `GOOGLE_API_KEY=your_key` (Free key at [aistudio.google.com](https://aistudio.google.com/)).
 
-### 3. Launch Streamlit Web App
+### 3. Launch Streamlit Application
 ```bash
 streamlit run app.py
 ```
-
----
-
-## 📊 Resume & Portfolio Bullet Points
-
-> **Agentic Research Assistant | LangGraph, Groq Llama-3.3-70B, Gemini, ChromaDB, Pydantic, Streamlit**
-> - Built an autonomous multi-agent research engine using **LangGraph** to decompose complex topics into sub-questions and execute parallel hybrid retrieval across local vector stores and live web search.
-> - Optimized web retrieval pipeline using Python `ThreadPoolExecutor` to run search queries in parallel, reducing retrieval latency by **3x** (from ~4s to ~0.8s).
-> - Implemented an automated **Self-Correction & Reflection Loop** using a Critic agent to grade hallucination risk, achieving reliable context-grounded outputs with automated query refinement.
-> - Designed structured output schemas using **Pydantic v2** and built a multi-provider LLM factory supporting **Groq**, **Google Gemini**, and local **Ollama** models.
-> - Integrated **LangSmith** for full agent execution tracing, state visualization, and latency benchmarking.

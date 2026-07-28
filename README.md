@@ -1,179 +1,162 @@
-# ⚡ Advanced RAG & Agentic Systems Engineering Portfolio
+# ⚡ Distributed RAG & Multi-Agent Systems Engineering Portfolio
 
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Framework: LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
-[![LLM Engine: Groq / Gemini](https://img.shields.io/badge/LLM-Groq%20%7C%20Gemini%20%7C%20Ollama-green.svg)](https://console.groq.com/)
-[![Concurrency: ThreadPool](https://img.shields.io/badge/Retrieval-Multi--Threaded%20(3x%20Faster)-brightgreen.svg)]()
+[![Orchestration: LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![Provider: Multi--Model](https://img.shields.io/badge/LLM Engine-Groq %7C Gemini %7C Ollama-green.svg)](https://console.groq.com/)
+[![Concurrency: ThreadPool](https://img.shields.io/badge/Retrieval-Multi--Threaded%20Execution-brightgreen.svg)]()
 [![Vector DB: ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-purple.svg)](https://www.trychroma.com/)
-[![Validation: Pydantic v2](https://img.shields.io/badge/Validation-Pydantic%20v2-red.svg)](https://docs.pydantic.dev/)
-[![UI: Streamlit](https://img.shields.io/badge/UI-Streamlit-ff4b4b.svg)](https://streamlit.io/)
+[![Schemas: Pydantic v2](https://img.shields.io/badge/Validation-Pydantic%20v2-red.svg)](https://docs.pydantic.dev/)
 
-A production-minded, full-stack AI engineering repository demonstrating the architectural evolution from **heterogeneous data ingestion & vector retrieval pipelines** to **autonomous multi-agent state graphs with reflection loops and concurrent multi-threaded search**.
+A software engineering repository demonstrating system designs for **heterogeneous data ingestion pipelines**, **dense-sparse hybrid vector retrieval**, and **autonomous stateful multi-agent graphs with dynamic reflection loops**.
 
 ---
 
-## 📂 Sub-Projects Overview
+## 📂 System Modules Overview
 
-| Project Name | Architecture | Key Technologies | Status & Highlights |
+| Module Name | Architectural Paradigm | Core Technologies | Focus Area |
 | :--- | :--- | :--- | :--- |
-| 🤖 **[Agentic Research Assistant](Agentic_Research_Assistant/)** | Autonomous Multi-Agent Graph + Dynamic Reflection Loop | LangGraph, Groq Llama-3.3-70B, Gemini, ChromaDB, ThreadPool DDGS, Pydantic v2, Streamlit | ⭐ **FLAGSHIP FEATURED PROJECT** |
-| 📚 **[Modular RAG Pipeline](Modular_RAG_Pipeline/)** | Multi-Source Heterogeneous Ingestion & Hybrid Vector Search | Python, LangChain, SentenceTransformers, ChromaDB, SQLite, Jupyter | 📚 **STUDY & FOUNDATIONS PROJECT** |
+| 🤖 **[Agentic Research Assistant](Agentic_Research_Assistant/)** | Stateful Cyclic Graph + Dynamic Reflection Loop | LangGraph, Groq Llama-3.3-70B, Gemini, ChromaDB, ThreadPool DDGS, Pydantic v2, Streamlit | Autonomous Multi-Agent Synthesis |
+| 📚 **[Modular RAG Pipeline](Modular_RAG_Pipeline/)** | Heterogeneous Pipeline + Dense Vector Search | Python, LangChain, SentenceTransformers, ChromaDB, SQLite, Jupyter | Data Ingestion & Tabular Chunking |
 
 ---
 
-## 🤖 1. Agentic Research Assistant (Flagship System)
+## 🤖 1. Agentic Research Assistant
 
-📁 **[Explore Agentic Sub-Project](Agentic_Research_Assistant/)** \| 🧠 **[Senior Engineering Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[Technical Tutorial](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
+📁 **[System Architecture Guide](Agentic_Research_Assistant/SYSTEM_ENGINEERING_GUIDE.md)** \| 📘 **[Technical Specification](Agentic_Research_Assistant/AGENTIC_TUTORIAL.md)**
 
-### System Overview & Problem Solved
-Single-prompt LLMs fail complex technical research tasks because they suffer from knowledge cutoffs, make unsupported assumptions, and cannot self-correct. The **Agentic Research Assistant** deploys an autonomous network of specialized AI agents over a cyclic state graph:
+### System Context & Problem Statement
+Single-step LLM retrieval pipelines suffer from three fundamental engineering limitations:
+1. **Knowledge Cutoffs & Static Blind Spots:** Inability to retrieve real-time web facts.
+2. **Context Fragmentation:** Monolithic prompts struggle to synthesize disparate evidence streams.
+3. **Unvalidated Outputs:** Absence of self-correction mechanisms to detect context hallucinations or missing coverage.
+
+The **Agentic Research Assistant** addresses these challenges by decoupling the research lifecycle into an autonomous, state-driven multi-agent graph:
 
 ```mermaid
 graph TD
-    User([User Research Topic]) --> Planner[1. Planner Agent]
-    Planner -->|Sanitized Queries| Research[2. Research Agent Node]
+    User([User Research Topic]) --> Planner[1. Planner Agent Node]
+    Planner -->|Sanitized Search Queries| Research[2. Parallel Research Node]
     
-    Research -->|Parallel Multi-Threaded Search| DDG[DuckDuckGo Live Search API]
-    Research -->|Dense Vector Search| ChromaDB[ChromaDB Local Vector DB]
+    Research -->|Concurrent ThreadPool| DDG[DuckDuckGo Web Search API]
+    Research -->|Semantic Vector Search| ChromaDB[ChromaDB Vector Store]
     
-    DDG --> Writer[3. Writer / Synthesizer Agent]
+    DDG --> Writer[3. Writer / Synthesizer Agent Node]
     ChromaDB --> Writer
     
-    Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Agent]
+    Writer -->|Draft Report + Citations| Critic[4. Critic & Fact-Checker Node]
     
-    Critic -->|Grade Groundedness| Evaluator{Score >= 0.85?}
+    Critic -->|Evaluate Groundedness| Evaluator{Score >= 0.85?}
     
     Evaluator -->|PASS| Finalizer[5. Finalizer Node]
-    Evaluator -->|FAIL & Revisions < Max| Refiner[Query Refiner / Loop]
+    Evaluator -->|FAIL & Revisions < Max| Refiner[Query Refiner / Re-Query Loop]
     Refiner -->|Refined Queries| Research
     Evaluator -->|FAIL & Revisions >= Max| Finalizer
     
     Finalizer --> Output([Interactive Streamlit UI + Markdown Export])
 ```
 
-### Key Engineering Innovations & Capabilities
-* **Task Decomposition & Query Sanitization:** Planner Agent generating sanitized, high-density search terms using Pydantic structured schemas.
-* **Concurrent Multi-Threaded Retrieval (`ThreadPoolExecutor`):** Executes DuckDuckGo web queries in parallel threads, reducing retrieval latency from ~4.0s to **~0.8s (3x speedup)**.
-* **Multi-Provider LLM Engine Factory:** Supports instant switching between **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and **Ollama** (Local `llama3.2`).
-* **Automated Self-Correction & Reflection Loop:** Critic Agent evaluating groundedness (`0.0 - 1.0`) and dynamically re-triggering retrieval if quality thresholds are missed.
-* **Publication-Grade Synthesis:** Writer Agent rendering executive summaries, key technical takeaways, comparison tables, and clickable inline reference links (`[1]`, `[2]`).
-* **Interactive Streamlit UI Dashboard:** Real-time execution timer (`⚡ Finished in 3.4s`), live status logs, source cards, and a **Download Report (.md)** button.
+### Core Engineering Specifications
+* **State Machine & Control Flow (`src/agents/graph.py`):** Implements `LangGraph` `StateGraph` with shared mutable state (`ResearchState`). Features dynamic conditional edge routing (`should_continue`) that evaluates critic groundedness scores against revision thresholds (`MAX_REVISIONS = 2`).
+* **Concurrent Retrieval Engine (`src/tools/web_search.py`):** Multi-threaded execution using Python `concurrent.futures.ThreadPoolExecutor`. Executes parallel network queries with fallback HTTP scrapers, reducing retrieval latency by **3x** (~4.0s to ~0.8s).
+* **Multi-Provider LLM Engine (`config.py`):** Provider-agnostic factory abstraction supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini** (`gemini-1.5-flash`), and local **Ollama** models (`llama3.2`).
+* **Structured Output Validation:** Enforces strict Pydantic v2 data contracts (`PlannerOutput`, `CriticEvaluation`) via direct JSON prompting, avoiding API tool-calling rate limits.
+* **Publication-Grade Synthesis:** Generates formatted Markdown reports featuring executive summaries, bulleted technical key takeaways, structural comparison tables, inline numerical citations (`[1]`, `[2]`), and clickable references tables.
 
 ---
 
-## 📚 2. Modular RAG Ingestion Pipeline (Foundational Project)
+## 📚 2. Modular RAG Ingestion Pipeline
 
-📁 **[Explore Modular RAG Sub-Project](Modular_RAG_Pipeline/)** \| 📘 **[Read RAG Technical Deep-Dive](Modular_RAG_Pipeline/RAG_TUTORIAL.md)**
+📁 **[Explore Modular RAG Pipeline](Modular_RAG_Pipeline/)** \| 📘 **[Read Technical Reference Guide](Modular_RAG_Pipeline/RAG_TUTORIAL.md)**
 
-### System Overview & Problem Solved
-Standard naive RAG pipelines break when handling heterogeneous real-world data (PDFs, plain text, CSV tables, and relational SQL databases) because arbitrary character splitting fragments table rows and destroys relational context.
+### System Context & Problem Statement
+Naive RAG systems fail when ingesting heterogeneous data sources (PDFs, plain text, CSV tables, SQLite databases) because standard character-based splitters break table row alignment and disrupt relational integrity.
 
-This sub-project implements a modular, production-minded ingestion and indexing engine designed to handle multi-format heterogenous data safely:
+This module implements a context-aware ingestion and vector retrieval architecture:
 
 ```mermaid
 graph LR
-    Sources["Multi-Source Data\n(PDF, CSV, TXT, SQL DB)"] --> Loader["Modular Loader\n(src/data_loader.py)"]
-    Loader --> Chunker["Context-Aware Splitter\n(Text: Recursive / Tabular: Row-Preserving)"]
+    Sources["Heterogeneous Data\n(PDF, CSV, TXT, SQLite)"] --> Loader["Modular Loader\n(src/data_loader.py)"]
+    Loader --> Chunker["Context-Aware Splitter\n(Unstructured: TextSplitter / Tabular: Row-Preserving)"]
     Chunker --> Embedder["Embedding Manager\n(SentenceTransformers: all-MiniLM-L6-v2)"]
-    Embedder --> VectorStore["Vector Store Manager\n(ChromaDB Local Persistence)"]
+    Embedder --> VectorStore["Vector Store Manager\n(ChromaDB Persistent Client)"]
     VectorStore --> Search["Semantic Similarity Search\n(Cosine Distance / Top-K)"]
 ```
 
-### Key Capabilities:
-* **Heterogeneous Data Ingestion (`src/data_loader.py`):** Unified loader supporting `.pdf`, `.csv`, `.txt`, and SQLite database queries with path validation and exception handling.
-* **Context-Aware Hybrid Chunking:** Uses `RecursiveCharacterTextSplitter` (`chunk_size=1000`, `chunk_overlap=200`) for unstructured text while preserving CSV/SQL rows intact.
-* **Embedding Model Lifecycle (`src/embedding_manager.py`):** Wraps `SentenceTransformer` (`all-MiniLM-L6-v2`) generating 384-dimensional dense vector embeddings.
-* **Vector Indexing & Retrieval (`src/vector_store.py`):** Local `ChromaDB` persistent storage executing top-$k$ semantic similarity queries.
-* **Interactive Notebook Verification:** Complete execution and testing in [`NoteBook/document.ipynb`](Modular_RAG_Pipeline/NoteBook/document.ipynb).
+### Technical Capabilities
+* **Heterogeneous Data Ingestion (`src/data_loader.py`):** Modular file loader validating paths and parsing `.pdf`, `.csv`, `.txt`, and SQLite relational databases.
+* **Context-Aware Hybrid Chunking:** Applies `RecursiveCharacterTextSplitter` (`chunk_size=1000`, `chunk_overlap=200`) for unstructured text while serializing tabular CSV and SQL rows intact.
+* **Embedding Lifecycle (`src/embedding_manager.py`):** Wraps `SentenceTransformer` (`all-MiniLM-L6-v2`) generating 384-dimensional dense vector embeddings.
+* **Vector Indexing (`src/vector_store.py`):** Local `ChromaDB` persistent vector indexing executing top-$k$ semantic similarity queries.
 
 ---
 
-## ⚡ Technical Comparison: Architectural Evolution
+## ⚡ Architectural Comparison Matrix
 
-| Architectural Dimension | Naive RAG | Advanced Modular RAG | Multi-Agent State Graphs (This Repo) |
+| Technical Metric | Naive RAG Architecture | Modular RAG Pipeline | Stateful Multi-Agent Graph |
 | :--- | :--- | :--- | :--- |
-| **Pipeline Flow** | Fixed Linear DAG | Modular Sequential Components | Cyclic Graph with Dynamic Edge Routing |
-| **Retrieval Concurrency** | Sequential | Sequential Vector Search | **Parallel Multi-Threaded (`ThreadPoolExecutor`)** |
-| **Data Ingestion** | Unstructured text only | Heterogeneous (PDF, CSV, TXT, SQL) | Hybrid (PDF Vector RAG + Live Web APIs) |
-| **LLM Provider Engine** | Hardcoded Single API | Single Model Wrapper | **Multi-Provider Factory (Groq, Gemini, Ollama)** |
-| **Hallucination Control** | ❌ None | ⚠️ Static Context Grounding | ✅ Automated Critic Reflection Loops |
-| **Output Type** | Raw LLM Text | Contextual Chunks | Pydantic Validated JSON & Cited Markdown Reports |
-| **Observability** | Console Print statements | Basic logging | **LangSmith** Full Trajectory Tracing |
+| **Control Flow** | Static Linear Chain | Modular Component Sequence | Stateful Cyclic Graph with Dynamic Edges |
+| **Retrieval Concurrency** | Sequential | Sequential Vector Query | **Parallel Multi-Threaded (`ThreadPoolExecutor`)** |
+| **Data Scope** | Unstructured text | Heterogeneous (PDF, CSV, TXT, SQL) | Hybrid (PDF Vector Store + Live Web APIs) |
+| **LLM Provider Engine** | Single Model API | Single Model API | **Multi-Provider Factory (Groq, Gemini, Ollama)** |
+| **Verification & Quality Gate** | None | Context Grounding | **Automated Reflection Loop (`Critic Node`)** |
+| **Schema Validation** | Unvalidated Text | String Chunks | **Pydantic v2 JSON Schema Enforcement** |
+| **Observability** | Standard Logging | Basic Metrics | **LangSmith Full Execution Tracing** |
 
 ---
 
-## 🛠️ Complete Repository Architecture
+## 🛠️ Complete Repository Directory Tree
 
 ```text
 RAG/
 │
-├── 🤖 Agentic_Research_Assistant/      # FLAGSHIP: Autonomous Multi-Agent StateGraph Engine
-│   ├── 📄 README.md                    # Sub-project documentation
-│   ├── 🧠 SYSTEM_ENGINEERING_GUIDE.md  # Architectural breakdown for Senior AI Engineers
-│   ├── 📘 AGENTIC_TUTORIAL.md          # Technical tutorial & interview practice guide
+├── 🤖 Agentic_Research_Assistant/      # Autonomous Multi-Agent StateGraph System
+│   ├── 📄 README.md                    # System design & setup documentation
+│   ├── 🧠 SYSTEM_ENGINEERING_GUIDE.md  # Component reference & architectural specification
+│   ├── 📘 AGENTIC_TUTORIAL.md          # Technical deep-dive & state machine breakdown
 │   ├── ⚙️ config.py                     # Multi-provider LLM factory (Groq, Gemini, Ollama)
-│   ├── 📄 requirements.txt             # LangGraph, Groq, Gemini, ChromaDB, ddgs dependencies
-│   ├── 🔑 .env.example                 # API key setup template
-│   ├── 🖥️ app.py                       # Interactive Streamlit UI dashboard + export button
+│   ├── 📄 requirements.txt             # Core system dependencies
+│   ├── 🔑 .env.example                 # Environment configuration template
+│   ├── 🖥️ app.py                       # Interactive Streamlit UI dashboard
 │   └── 🧩 src/
-│       ├── state.py                    # Shared TypedDict ResearchState graph schema
+│       ├── state.py                    # Shared TypedDict ResearchState schema
 │       ├── tools/                      # Multi-threaded web_search.py & vector_store.py
 │       └── agents/                     # Planner, Writer, Critic, & Graph Orchestrator
 │
-├── 📚 Modular_RAG_Pipeline/           # FOUNDATIONS: Heterogeneous RAG Ingestion & Vector Search
-│   ├── 📄 README.md                    # Sub-project documentation
-│   ├── 📘 RAG_TUTORIAL.md              # RAG math & retrieval deep-dive reference
-│   ├── ⚙️ SETUP_GUIDE.md                # Environment & linter setup guide
-│   ├── 📄 requirements.txt             # Basic RAG dependencies
+├── 📚 Modular_RAG_Pipeline/           # Heterogeneous Data Ingestion & Vector Retrieval
+│   ├── 📄 README.md                    # Module documentation
+│   ├── 📘 RAG_TUTORIAL.md              # RAG technical reference guide
+│   ├── ⚙️ SETUP_GUIDE.md                # Environment setup instructions
+│   ├── 📄 requirements.txt             # Module dependencies
 │   ├── 📓 NoteBook/
-│   │   └── document.ipynb              # Interactive pipeline verification notebook
-│   ├── 📁 Data/                        # Test datasets (PDFs, CSVs, SQL DB) & persistent vector index
+│   │   └── document.ipynb              # Interactive verification notebook
+│   ├── 📁 Data/                        # Test datasets & local ChromaDB vector store
 │   └── 🧩 src/                         # Ingestion, Embedding, & Vector Store modules
 │
-└── 📄 README.md                        # Master Portfolio Hub (This file)
+└── 📄 README.md                        # Master Portfolio Architecture Document (This file)
 ```
 
 ---
 
-## 🚀 Quickstart Guide: How to Run
+## 🚀 Quickstart & Reproduction Guide
 
-### 1. Run the Flagship Agentic Research Assistant
+### 1. Launch Agentic Research Assistant
 
 ```bash
-# Navigate to the Agentic project
 cd Agentic_Research_Assistant
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Create .env file and add your free Groq or Gemini API Key
+# Copy environment template and configure API key
 cp .env.example .env
-# Add: GROQ_API_KEY=gsk_your_groq_key (Get free key at console.groq.com)
+# Set GROQ_API_KEY=gsk_your_key (Free key at console.groq.com) or GOOGLE_API_KEY
 
-# Launch Streamlit Interactive UI
 streamlit run app.py
 ```
 
-### 2. Run the Modular RAG Study Pipeline
+### 2. Launch Modular RAG Pipeline
 
 ```bash
-# Navigate to the Modular RAG project
 cd Modular_RAG_Pipeline
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Open the verification notebook in Jupyter / VS Code
 jupyter notebook NoteBook/document.ipynb
 ```
-
----
-
-## 🎯 Resume & LinkedIn Ready Bullet Points (For AI/ML Engineering Roles)
-
-> **AI / LLM Systems Engineer Portfolio | LangGraph, Groq Llama-3.3-70B, Gemini, ChromaDB, Pydantic v2, Streamlit**
-> - **Stateful Multi-Agent Graph:** Engineered an autonomous research system using **LangGraph** to decompose complex prompts into sub-questions and execute parallel hybrid retrieval across local vector stores and live web APIs.
-> - **Concurrent Multi-Threaded Retrieval:** Optimized web search pipeline using Python `ThreadPoolExecutor` to run search queries in parallel, reducing retrieval latency by **3x** (from ~4s to ~0.8s).
-> - **Self-Correction & Reflection Loop:** Built an automated reflection system using a Critic agent to evaluate groundedness (`0.0 - 1.0`), enforcing **Pydantic v2** structured output schemas and dynamic query refinement when quality thresholds were missed.
-> - **Multi-Provider Engine Architecture:** Designed a provider-agnostic LLM factory supporting **Groq** (`llama-3.3-70b-versatile`), **Google Gemini**, and local **Ollama** models.
-> - **Heterogeneous RAG Data Pipeline:** Developed a modular ingestion engine (`Python`, `ChromaDB`, `SentenceTransformers`) supporting PDFs, CSVs, TXT, and SQL databases with table row-preserving chunking.

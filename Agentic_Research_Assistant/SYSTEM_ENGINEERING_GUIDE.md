@@ -1,65 +1,42 @@
-# 🧠 Senior AI Systems Engineering Guide: Agentic Research Assistant
+# 🧠 Senior AI Systems Engineering Reference: Agentic Research Assistant
 
-Welcome to your complete engineering guide! This document is written for someone who wants to think, design, and build like a **Senior AI Systems Engineer**.
-
-Instead of treating AI as a "magic black box" or writing simple prompt strings, this guide teaches you how **autonomous multi-agent state machines work under the hood**, how agents communicate, how memory and state flow through code, and why every line in your codebase exists.
+A system design document and component reference manual detailing the architecture, state control flow, data mutability, and optimization patterns of the **Agentic Research Assistant**.
 
 ---
 
-## 📐 1. The Senior AI Systems Engineer Mindset
+## 📐 1. System Engineering Principles
 
-### The Golden Rule of AI Engineering
+### The Deterministic Wrapper Principle
+> **Engineering Rule:** LLMs are non-deterministic reasoning components. Production AI software must encapsulate non-deterministic LLM calls inside **deterministic software contracts**—using explicit State Graphs, TypedDict schemas, Pydantic data validation, and strict condition gates.
 
-> **LLMs are non-deterministic reasoning engines, not magic.** To build reliable, production-grade applications, engineers must wrap non-deterministic LLMs inside **deterministic software contracts** (State Graphs, Pydantic Schemas, and Guardrails).
+### System Evolution
 
-### Traditional Software vs. Single-Prompt LLMs vs. Multi-Agent Graphs
+```text
+1. Monolithic LLM Pipeline:
+   Input ──> [LLM Prompt + Static Vector Context] ──> Unverified Text Output
 
-```
-1. Traditional Software:
-   Input ──> [Deterministic Code Function] ──> Guaranteed Output
-
-2. Single-Prompt LLM (Basic RAG):
-   Input ──> [LLM + Vector Context] ──> Unpredictable Text Output (High Hallucination Risk)
-
-3. Stateful Multi-Agent System (This Project):
-   Input ──> [State Machine Bus]
+2. Stateful Multi-Agent Graph (This System):
+   Input ──> [State Machine Bus: ResearchState]
                    │
-                   ├──> [Planner Node] ──────> Schema Validated Tasks
-                   ├──> [Hybrid Tool Node] ──> Deduplicated Web & Vector Chunks
-                   ├──> [Writer Node] ───────> Cited Draft
-                   └──> [Critic Node] ───────> Reflection Gate (Score >= 0.8?)
+                   ├──> [Planner Node] ──────> Sanitized Tasks & Search Terms
+                   ├──> [Concurrent Tools] ──> Parallel Web (ddgs) & Vector Chunks
+                   ├──> [Writer Node] ───────> Cited Markdown Report
+                   └──> [Critic Node] ───────> Groundedness Reflection Gate
                                                     │
-                                                    ├──> PASS: Final Report
-                                                    └──> FAIL: Dynamic Re-Query Loop
+                                                    ├──> PASS (Score >= 0.85): Finalizer
+                                                    └──> FAIL (Score < 0.85): Dynamic Re-Query
 ```
 
 ---
 
-## 💬 2. How Agents "Talk" to Each Other (Demystifying Agent Communication)
+## 💬 2. State Machine Architecture & Data Mutability
 
-### The Beginner Myth vs. Software Engineering Reality
+### The Shared Memory Bus Pattern
+Agent nodes in this system do not communicate via conversational natural language messages. Instead, they interact via a **Shared State Bus** (`ResearchState`) in system memory. Each node is a pure function that consumes `ResearchState`, executes processing, and returns a dictionary of state key mutations.
 
-* **The Myth:** People assume agents talk to each other in conversational English over a telephone line (e.g., *"Hey Planner, can you search for this?"*).
-* **The Reality:** Agents **do not talk directly to each other**. Instead, they read and write to a **Shared State Dictionary in RAM** (`ResearchState`).
+### State Dictionary Mutation Sequence
 
-### The Analogy: The Tech Company Kanban Board
-
-Think of the shared state (`ResearchState`) as a shared Trello board:
-
-1. **User** posts a task on the board (`topic`).
-2. **Planner Agent** picks up `topic`, writes sub-questions onto the board (`sub_questions`, `search_queries`), and moves the card to *Research*.
-3. **Research Agent** reads `search_queries`, fetches data from DuckDuckGo & ChromaDB, writes results onto the board (`web_results`, `retrieved_docs`), and moves the card to *Writer*.
-4. **Writer Agent** reads the results from the board, synthesizes a report (`draft_report`), and moves the card to *Critic*.
-5. **Critic Agent** evaluates the draft. If score `< 0.8`, it writes revision instructions (`critic_feedback`) and moves the card **BACK** to *Research*.
-
----
-
-### The State Dictionary Trace (Step-by-Step Data Journey)
-
-Here is how the Python dictionary mutates as it passes through the pipeline:
-
-#### Step 0: Initial State (User Click)
-
+#### Initial State (`app.py` Submission)
 ```python
 {
     "topic": "Impact of Quantum Computing on Cryptography",
@@ -76,80 +53,71 @@ Here is how the Python dictionary mutates as it passes through the pipeline:
 }
 ```
 
-#### Step 1: After `planner_node` Executes
-
+#### Mutation 1: `planner_agent_node`
 ```python
 {
-    "topic": "Impact of Quantum Computing on Cryptography",
     "sub_questions": [
-        "What is Shor's algorithm and how does it break RSA?",
+        "What is Shor's algorithm impact on RSA encryption?",
         "What are lattice-based post-quantum cryptography standards?",
-        "What is NIST's implementation timeline for PQC?"
+        "What is NIST implementation timeline for PQC?",
+        "What are symmetric encryption key length requirements?"
     ],
     "search_queries": [
-        "Shor's algorithm RSA impact quantum",
-        "NIST post quantum cryptography standards 2026"
-    ],
-    # ... remaining keys intact ...
-}
-```
-
-#### Step 2: After `research_agent_node` Executes
-
-```python
-{
-    # ... previous keys ...
-    "web_results": [
-        {"title": "NIST Releases Post-Quantum Standards", "url": "https://...", "snippet": "NIST finalized ML-KEM..."},
-        {"title": "Shor Algorithm Analysis", "url": "https://...", "snippet": "Shor's algorithm factorizes..."}
-    ],
-    "retrieved_docs": [
-        {"content": "Lattice cryptography security relies on...", "source": "quantum_paper.pdf"}
+        "Shors algorithm RSA quantum impact",
+        "NIST post quantum cryptography standards 2026",
+        "quantum computing AES 256 key size"
     ]
 }
 ```
 
-#### Step 3: After `writer_agent_node` Executes
-
+#### Mutation 2: `research_agent_node` (Parallel Multi-Threaded Execution)
 ```python
 {
-    # ... previous keys ...
-    "draft_report": "# Impact of Quantum Computing on Cryptography\n\nQuantum computers threaten current RSA encryption [1]. NIST finalized new standards [2]..."
+    "web_results": [
+        {"title": "NIST Finalizes Post-Quantum Standards", "url": "https://...", "snippet": "NIST released primary post-quantum algorithms..."},
+        {"title": "Shor Algorithm Quantum Complexity", "url": "https://...", "snippet": "Shor algorithm breaks asymmetric encryption..."}
+    ],
+    "retrieved_docs": [
+        {"content": "Lattice cryptography security bounds...", "source": "quantum_paper.pdf"}
+    ]
 }
 ```
 
-#### Step 4: After `critic_agent_node` Executes
-
+#### Mutation 3: `writer_agent_node`
 ```python
 {
-    # ... previous keys ...
-    "critic_score": 0.72,  # < 0.8 (Requires Reflection!)
-    "critic_feedback": "Draft lacks details on symmetric encryption key length impact.",
-    "search_queries": ["AES 256 quantum computing Grover algorithm impact"]
+    "draft_report": "# Impact of Quantum Computing on Cryptography\n\n## 📌 Executive Summary\nQuantum computing poses a fundamental challenge to asymmetric cryptography [1]..."
 }
 ```
 
-#### Step 5: Dynamic Routing (`should_continue`)
+#### Mutation 4: `critic_agent_node`
+```python
+{
+    "critic_score": 0.78,  # < 0.85 Threshold
+    "critic_feedback": "Draft requires detailed analysis of Grover algorithm impact on AES.",
+    "search_queries": ["Grover algorithm AES 256 symmetric key security"]
+}
+```
 
-* Router checks `critic_score = 0.72` and `revision_count = 0 < 2`.
-* Router returns `"continue_revision"`.
-* Graph calls `increment_revision_node` (`revision_count = 1`) and routes **BACK** to `research_agent_node` with the new query!
+#### Transition Gate (`should_continue`)
+* Evaluates `score = 0.78` and `revisions = 0 < 2`.
+* Returns `"continue_revision"`, triggering `increment_revision_node` (`revision_count = 1`) and looping back to `research_agent_node`.
 
 ---
 
-## 🏛️ 3. System Architecture: 5-Layer Engineering Model
+## 🏛️ 3. 5-Layer Component Layering
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        LAYER 1: PRESENTATION (UI)                      │
-│                      app.py (Streamlit Dashboard)                      │
+│        app.py (Streamlit Dashboard, Latency Timer, Exporter)           │
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Trigger & Render
+                                    │ Invokes
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                      LAYER 2: GRAPH ORCHESTRATION                      │
 │        src/agents/graph.py (LangGraph StateGraph & Conditional Edges)  │
-│        src/state.py (TypedDict ResearchState Schema)                   │
+│        src/state.py (TypedDict ResearchState Memory Contract)          │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ Passes State
                                     ▼
@@ -157,172 +125,40 @@ Here is how the Python dictionary mutates as it passes through the pipeline:
 │                      LAYER 3: INTELLIGENCE AGENTS                      │
 │   src/agents/planner.py   │   src/agents/writer.py  │ src/agents/critic.py│
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ Invokes Tools
+                                    │ Calls Tools
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                    LAYER 4: TOOLS & RETRIEVAL MEMORY                   │
-│   src/tools/web_search.py (DuckDuckGo) │ src/tools/vector_store.py (ChromaDB)
+│                    LAYER 4: RETRIEVAL & TOOL CONCURRENCY               │
+│   src/tools/web_search.py (ThreadPool DDGS) │ src/tools/vector_store.py│
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ API Calls
+                                    │ API / DB Calls
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   LAYER 5: INFRASTRUCTURE & LLM ENGINE                 │
-│         config.py (Google Gemini 2.0 Flash API / LangSmith)            │
+│                   LAYER 5: INFRASTRUCTURE & LLM FACTORY                │
+│   config.py (Multi-Provider: Groq Llama-3.3-70B / Gemini / Ollama)     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔬 4. Deep-Dive Codebase Anatomy (Line-by-Line Explanation)
+## 🔬 4. Codebase Reference & Architectural Rationale
 
-Let's examine why every single file was built the way it was.
+### File 1: `config.py` — Multi-Provider Factory
+* **Design Pattern:** Factory Method Pattern.
+* **Rationale:** Decouples agent nodes from underlying LLM vendors. Supports seamless switching between **Groq** (`llama-3.3-70b-versatile`), **Google Gemini**, and local **Ollama** models.
 
----
+### File 2: `src/state.py` — TypedDict Schema Contract
+* **Design Pattern:** Data Transfer Object (DTO) / Shared Bus Pattern.
+* **Rationale:** Using `TypedDict` provides static type verification via IDE linter tools (Pyright), catching key typo errors prior to runtime execution.
 
-### File 1: `config.py` — Central Control Center
+### File 3: `src/tools/web_search.py` — Concurrent Multi-Threaded Search
+* **Design Pattern:** Thread Pool Pattern (`ThreadPoolExecutor`).
+* **Rationale:** Network requests are I/O-bound. Running web search queries concurrently reduces retrieval latency from $O(N \cdot t)$ to $O(\max(t))$, yielding a **3x speedup**. Includes a direct HTTP scraper fallback.
 
-```python
-import os
-from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+### File 4: `src/agents/planner.py` & `src/agents/critic.py` — JSON Schema Enforcement
+* **Design Pattern:** Direct JSON Prompting + Pydantic Schema Parsing.
+* **Rationale:** Bypasses vendor tool-calling API rate limits (`429 RESOURCE_EXHAUSTED`) while preserving strict schema validation (`PlannerOutput`, `CriticEvaluation`).
 
-load_dotenv()
-
-DEFAULT_PROVIDER = "groq"
-DEFAULT_MODEL_NAME = "llama-3.3-70b-versatile"
-
-def get_llm(model_name: str = None, temperature: float = 0.2) -> BaseChatModel:
-    provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER).lower()
-    if provider == "groq":
-        from langchain_groq import ChatGroq
-        return ChatGroq(model=model_name or "llama-3.3-70b-versatile", groq_api_key=os.getenv("GROQ_API_KEY"))
-    ...
-```
-
-#### Senior Engineer's Notes:
-
-* **Why Multi-Provider Architecture (Groq + Gemini + Ollama)?** Real production AI systems cannot depend on a single API provider. By creating a provider-agnostic factory function (`get_llm`), the system can seamlessly fall back from cloud APIs to ultra-fast LPU inference (Groq) or 100% offline local models (Ollama).
-* **Why Groq for Agent Graphs?** Groq provides **14,400 free requests/day** for `llama-3.3-70b-versatile` with near-zero latency (~500 tokens/sec), eliminating rate limit issues during multi-agent graph iterations.
-
----
-
-### File 2: `src/state.py` — Graph Memory Contract
-
-```python
-from typing import TypedDict, List, Dict, Any
-
-class ResearchState(TypedDict):
-    topic: str
-    sub_questions: List[str]
-    search_queries: List[str]
-    retrieved_docs: List[Dict[str, Any]]
-    web_results: List[Dict[str, Any]]
-    draft_report: str
-    critic_score: float
-    critic_feedback: str
-    revision_count: int
-    final_report: str
-    status_log: List[str]
-```
-
-#### Senior Engineer's Notes:
-
-* **Why `TypedDict` instead of regular `dict`?** A standard `dict` in Python is prone to typo bugs (e.g. `state["topc"]` instead of `state["topic"]`). `TypedDict` gives Python static type checkers (like Pyright/Mypy) full visibility, preventing runtime `KeyError` crashes.
-* **Why pass state as a single object?** In distributed systems, this is known as the **Event Bus / Message Passing Pattern**. It decouples agents—agents don't need to know how other agents work; they only care about reading and updating keys in `ResearchState`.
-
----
-
-### File 3: `src/agents/planner.py` — Direct JSON Prompting + Pydantic Validation
-
-```python
-from pydantic import BaseModel, Field
-import json
-
-class PlannerOutput(BaseModel):
-    sub_questions: List[str]
-    search_queries: List[str]
-
-def planner_agent_node(state: dict) -> dict:
-    topic = state["topic"]
-    llm = get_llm(temperature=0.2)
-    
-    prompt = f"Analyze topic and return JSON object matching schema: {topic}"
-    response = llm.invoke(prompt)
-    data = json.loads(response.content)
-    plan = PlannerOutput(**data)
-    return {"sub_questions": plan.sub_questions, "search_queries": plan.search_queries}
-```
-
-#### Senior Engineer's Notes:
-* **Why Direct JSON Prompting + Pydantic Parsing?** Using `with_structured_output()` invokes Google's Function/Tool Calling API, which has strict rate limits (`limit: 0` or 429 quota errors on free tier accounts). By asking the LLM to output a raw JSON block and instantiating `PlannerOutput(**data)`, we preserve **100% Pydantic type safety** while using standard, high-quota text completion endpoints!
-
----
-
-### File 4: `src/agents/critic.py` — Quality Gate & Hallucination Guardrail
-
-```python
-class CriticEvaluation(BaseModel):
-    is_grounded: bool = Field(description="True if claims are supported by context.")
-    score: float = Field(description="Score between 0.0 and 1.0.", ge=0.0, le=1.0)
-    feedback: str = Field(description="Instructions for revision if score < 0.8.")
-    revised_search_queries: List[str] = Field(default=[], description="New queries if missing facts needed.")
-
-def critic_agent_node(state: dict) -> dict:
-    ...
-```
-
-* **The Concept of Automated Groundedness:** Instead of relying on a human to spot hallucinations, the Critic node compares the `draft_report` directly against the raw `web_results` and `retrieved_docs`. If claims exist in the draft that do not exist in the context, it penalizes the score.
-
----
-
-### File 4.5: `src/tools/web_search.py` — Concurrent Multi-Threaded Retrieval
-
-```python
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-def search_web(queries: List[str]) -> List[Dict[str, Any]]:
-    with ThreadPoolExecutor(max_workers=min(5, len(queries))) as executor:
-        futures = [executor.submit(_single_query_search, q) for q in queries]
-        ...
-```
-
-#### Senior Engineer's Notes:
-
-* **Why Concurrent Multi-Threading (`ThreadPoolExecutor`)?** In I/O-bound operations (like network API search calls), executing search queries sequentially creates bottleneck latency ($N \times \text{latency}$). Multi-threading runs query 1, query 2, and query 3 in parallel threads, slashing retrieval time from ~4.0s down to ~0.8s!
-
----
-
-### File 5: `src/agents/graph.py` — LangGraph Assembly & Routing
-
-```python
-def should_continue(state: dict) -> Literal["continue_revision", "finalize"]:
-    score = state.get("critic_score", 0.0)
-    revisions = state.get("revision_count", 0)
-
-    if score >= 0.8 or revisions >= MAX_REVISIONS:
-        return "finalize"
-    else:
-        return "continue_revision"
-```
-
-#### Senior Engineer's Notes:
-
-* **Safety Valve against Infinite Loops:** AI agents in loops can consume infinite tokens if left unchecked. Checking `revisions >= MAX_REVISIONS` (max 2 loops) ensures the system always terminates deterministically within budget.
-
----
-
-## 🛠️ 5. Hands-on Execution & How to Demo This Like a Senior Engineer
-
-### How to run:
-
-```bash
-cd "/Users/dilshanrajapakshe/Documents/SLIIT/GitHub/Data science/RAG/Agentic_Research_Assistant"
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-### When explaining this in an interview:
-
-1. Start with the **Problem**: *"Single LLM calls hallucinate and lack reflection."*
-2. Introduce your **Solution**: *"I built a stateful multi-agent system using LangGraph and Gemini 2.0."*
-3. Highlight **Engineering Rigor**: *"I enforced Pydantic schemas for structured output, built a hybrid RAG + live web search tool layer, and implemented a Critic reflection loop that dynamically re-queries search APIs when quality scores fall below 0.8."*
+### File 5: `src/agents/graph.py` — LangGraph Assembly
+* **Design Pattern:** State Machine Pattern.
+* **Rationale:** Assembles graph nodes, entry points, linear transitions, and conditional edge gates (`should_continue`) into a compiled, executable `StateGraph`.

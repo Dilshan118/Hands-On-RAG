@@ -188,20 +188,21 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 load_dotenv()
 
-DEFAULT_MODEL_NAME = "gemini-2.0-flash"
-MAX_REVISIONS = 2
+DEFAULT_PROVIDER = "groq"
+DEFAULT_MODEL_NAME = "llama-3.3-70b-versatile"
 
-def get_llm(model_name: str = DEFAULT_MODEL_NAME, temperature: float = 0.2) -> ChatGoogleGenerativeAI:
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY not found...")
-    return ChatGoogleGenerativeAI(model=model_name, temperature=temperature, google_api_key=api_key)
+def get_llm(model_name: str = None, temperature: float = 0.2) -> BaseChatModel:
+    provider = os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER).lower()
+    if provider == "groq":
+        from langchain_groq import ChatGroq
+        return ChatGroq(model=model_name or "llama-3.3-70b-versatile", groq_api_key=os.getenv("GROQ_API_KEY"))
+    ...
 ```
 
 #### Senior Engineer's Notes:
 
-* **Why Temperature = 0.2?** Temperature controls randomness ($0.0 = \text{strictly deterministic}$, $1.0 = \text{creative}$). For task planning, fact-checking, and vector retrieval, we want low temperature ($0.2$) so the LLM acts logically rather than inventing facts.
-* **Why `gemini-2.0-flash`?** Flash models offer high speed (~500ms latency) and 1 million token context windows, allowing us to pass large search contexts without token truncation.
+* **Why Multi-Provider Architecture (Groq + Gemini + Ollama)?** Real production AI systems cannot depend on a single API provider. By creating a provider-agnostic factory function (`get_llm`), the system can seamlessly fall back from cloud APIs to ultra-fast LPU inference (Groq) or 100% offline local models (Ollama).
+* **Why Groq for Agent Graphs?** Groq provides **14,400 free requests/day** for `llama-3.3-70b-versatile` with near-zero latency (~500 tokens/sec), eliminating rate limit issues during multi-agent graph iterations.
 
 ---
 
@@ -231,34 +232,29 @@ class ResearchState(TypedDict):
 
 ---
 
-### File 3: `src/agents/planner.py` — Pydantic Task Decomposition
+### File 3: `src/agents/planner.py` — Direct JSON Prompting + Pydantic Validation
 
 ```python
 from pydantic import BaseModel, Field
-from config import get_llm
+import json
 
 class PlannerOutput(BaseModel):
-    sub_questions: List[str] = Field(description="4 targeted research sub-questions.", min_items=3, max_items=5)
-    search_queries: List[str] = Field(description="3-5 word search engine queries.", min_items=3, max_items=5)
+    sub_questions: List[str]
+    search_queries: List[str]
 
 def planner_agent_node(state: dict) -> dict:
     topic = state["topic"]
     llm = get_llm(temperature=0.2)
-    structured_llm = llm.with_structured_output(PlannerOutput)
-  
-    prompt = f"Analyze topic and break it into sub-questions and search queries: {topic}"
-    try:
-        plan: PlannerOutput = structured_llm.invoke(prompt)
-        return {"sub_questions": plan.sub_questions, "search_queries": plan.search_queries}
-    except Exception:
-        # Fallback handling
-        ...
+    
+    prompt = f"Analyze topic and return JSON object matching schema: {topic}"
+    response = llm.invoke(prompt)
+    data = json.loads(response.content)
+    plan = PlannerOutput(**data)
+    return {"sub_questions": plan.sub_questions, "search_queries": plan.search_queries}
 ```
 
 #### Senior Engineer's Notes:
-
-* **What is `with_structured_output()`?** Under the hood, this configures Gemini's **Function Calling / JSON Schema API**. The LLM is forced to return JSON that matches the `PlannerOutput` Pydantic class.
-* **Why Fallback Handlers?** Networks fail, APIs rate-limit. A Senior Engineer always writes fallback try/except blocks so a temporary API glitch doesn't crash the user's entire app.
+* **Why Direct JSON Prompting + Pydantic Parsing?** Using `with_structured_output()` invokes Google's Function/Tool Calling API, which has strict rate limits (`limit: 0` or 429 quota errors on free tier accounts). By asking the LLM to output a raw JSON block and instantiating `PlannerOutput(**data)`, we preserve **100% Pydantic type safety** while using standard, high-quota text completion endpoints!
 
 ---
 

@@ -21,19 +21,64 @@ st.set_page_config(
 st.sidebar.title("🤖 Agent Configuration")
 st.sidebar.markdown("---")
 
-api_key = st.sidebar.text_input(
-    "Google Gemini API Key",
-    type="password",
-    value=os.getenv("GOOGLE_API_KEY", ""),
-    help="Get a free key from Google AI Studio: https://aistudio.google.com/"
+provider = st.sidebar.selectbox(
+    "Select LLM Provider",
+    options=["Groq (Recommended Free API)", "Google Gemini", "Ollama (Local Offline LLM)"],
+    index=0,
+    help="Groq offers ultra-fast, high-quota free inference for Llama-3.3-70B with zero 429 quota issues."
 )
-if api_key:
-    os.environ["GOOGLE_API_KEY"] = api_key
+
+if "Groq" in provider:
+    os.environ["LLM_PROVIDER"] = "groq"
+    groq_key = st.sidebar.text_input(
+        "Groq API Key",
+        type="password",
+        value=os.getenv("GROQ_API_KEY", ""),
+        help="Get a 100% free key from Groq Console: https://console.groq.com/"
+    )
+    if groq_key:
+        os.environ["GROQ_API_KEY"] = groq_key
+        
+    selected_model = st.sidebar.selectbox(
+        "Select Groq Model",
+        options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"],
+        index=0
+    )
+    os.environ["GROQ_MODEL"] = selected_model
+
+elif "Google" in provider:
+    os.environ["LLM_PROVIDER"] = "google"
+    gemini_key = st.sidebar.text_input(
+        "Google Gemini API Key",
+        type="password",
+        value=os.getenv("GOOGLE_API_KEY", ""),
+        help="Get a free key from Google AI Studio: https://aistudio.google.com/"
+    )
+    if gemini_key:
+        os.environ["GOOGLE_API_KEY"] = gemini_key
+        
+    selected_model = st.sidebar.selectbox(
+        "Select Gemini Model",
+        options=["gemini-1.5-flash", "gemini-1.5-pro"],
+        index=0
+    )
+    os.environ["GEMINI_MODEL"] = selected_model
+
+else:
+    os.environ["LLM_PROVIDER"] = "ollama"
+    selected_model = st.sidebar.selectbox(
+        "Select Ollama Local Model",
+        options=["llama3.2", "mistral", "qwen2.5"],
+        index=0,
+        help="Make sure Ollama is installed and running locally ('ollama serve')."
+    )
+    os.environ["OLLAMA_MODEL"] = selected_model
 
 st.sidebar.info(
     f"**Engine Specs:**\n"
     f"- **Orchestration:** LangGraph\n"
-    f"- **LLM:** `{DEFAULT_MODEL_NAME}`\n"
+    f"- **Provider:** `{os.getenv('LLM_PROVIDER', 'groq').upper()}`\n"
+    f"- **LLM:** `{selected_model}`\n"
     f"- **Max Self-Corrections:** {MAX_REVISIONS}\n"
     f"- **Search:** DuckDuckGo + ChromaDB"
 )

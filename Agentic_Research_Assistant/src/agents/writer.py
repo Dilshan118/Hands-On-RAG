@@ -1,3 +1,4 @@
+import time
 from config import get_llm
 
 def writer_agent_node(state: dict) -> dict:
@@ -13,6 +14,8 @@ def writer_agent_node(state: dict) -> dict:
     status_log = state.get("status_log", [])
     
     status_log.append("✍️ Writer Agent: Synthesizing facts into a structured research draft...")
+
+    time.sleep(1)  # Pacing for rate limit safety
 
     # Format context sources with numerical citations
     sources_text = ""

@@ -52,7 +52,7 @@ graph TD
 ## 🧰 Tech Stack
 
 * **Graph Orchestration:** `LangGraph`
-* **LLM Engine:** `Google Gemini 2.0 Flash` (`langchain-google-genai`)
+* **LLM Engine:** Multi-Provider support for **Groq** (`llama-3.3-70b`), **Google Gemini** (`gemini-1.5-flash`), and **Ollama** (Local `llama3.2`)
 * **Vector Store:** `ChromaDB` (Local persistence)
 * **Web Search:** `duckduckgo-search`
 * **Data Schemas:** `Pydantic v2`

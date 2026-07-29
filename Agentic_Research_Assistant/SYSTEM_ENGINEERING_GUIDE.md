@@ -392,3 +392,59 @@ LANGCHAIN_PROJECT=Agentic-Research-Assistant
 - [ ] Enable HTTPS for web-facing deployment
 - [ ] Add audit logging for all LLM interactions
 - [ ] Implement content filtering on LLM outputs
+
+---
+
+## 🛡️ 8. Anti-Hallucination & Systems Accuracy Architecture (v2.0)
+
+### 8.1 The 3-Step Source-Grounding Protocol (Writer Node)
+
+To eliminate LLM hallucinations, statistic fabrications, and unsupported claims, the Writer Node enforces a strict **3-Step Source-Grounding Protocol** at `temperature=0.0`:
+
+1. **Source Identification**: Before writing any factual sentence, the agent must identify the exact `[N]` source ID in the retrieved context that contains the statement.
+2. **Strict Paraphrasing**: The agent paraphrases ONLY what source `[N]` explicitly states — no extrapolation or estimation permitted.
+3. **Traceable Inline Citation**: The agent attaches the corresponding `[N]` citation directly inline.
+
+**Prohibition Rules:**
+- **Zero Fabrication**: Prohibits inventing statistics, percentages, adoption rates, market sizes, or benchmark figures not explicitly stated in sources. Qualitative descriptors (e.g., "rapidly growing adoption") are required when numbers are absent.
+- **Entity Relationship Guardrails**: Prohibits inventing relationships between organizations or platforms (e.g. claiming entity X runs on platform Y) unless explicitly verified by retrieved context.
+- **Explicit Coverage Gaps**: If no source covers a subtopic, the agent must write *"No authoritative source was retrieved for this claim"* rather than generating plausible text from training data.
+
+### 8.2 Fabrication Detection Quality Gate (Critic Node)
+
+The Critic Node evaluates draft reports against retrieved source context using a dedicated **Fabrication Detection** dimension (weight 25%):
+
+- **Number & Statistic Scanning**: Scans every statistic, percentage, dollar figure, and benchmark score in the draft, cross-referencing each against the top 10 retrieved sources (up to 400 chars per source).
+- **Penalization Mechanics**: Deducts `0.15` per hallucinated statistic. Automatically assigns a score of `0.0` if 3+ fabricated statistics are detected.
+- **Strict Guard Rule**: If even a single fabricated statistic is found, the final quality score MUST be below `0.80`, triggering a mandatory reflection/revision loop.
+- **Fail-Safe Fallback**: If LLM parsing fails in the Critic, fallback default score is set to `0.75` (below the `0.80` threshold) to force a revision loop rather than auto-passing invalid drafts.
+
+### 8.3 Context Budget & Retrieval Scaling
+
+| Parameter | Previous Value | Updated Value | Impact |
+| :--- | :--- | :--- | :--- |
+| `max_results_per_query` | 3 | **5** | ~67% more evidence snippets gathered per research run |
+| `MAX_WEB_SOURCES` | 10 | **15** | Indexed evidence capacity increased for Writer synthesis |
+| `MAX_SNIPPET_LEN` | 450 chars | **600 chars** | High-density context preservation per source |
+| `Critic Source Context` | 5 sources (200 chars) | **10 sources (400 chars)** | Enhanced evidence coverage for fact-checking |
+| `Critic Report Window` | 4,000 chars | **6,000 chars** | Broader report evaluation window |
+| `MAX_REVISIONS` | 2 | **3** | Additional self-correction budget for complex queries |
+| `Writer Temperature` | 0.3 | **0.0** | Fully deterministic, evidence-bound text generation |
+| `Critic Temperature` | 0.1 | **0.0** | Deterministic quality scoring and hallucination detection |
+
+### 8.4 Temporal Recency Rules (Planner Node)
+
+To prevent the LLM from relying on outdated training data or historic technologies:
+- At least 2 search queries must explicitly include a temporal year qualifier (e.g. `"2025"` or `"2026"`).
+- Sub-questions must frame inquiries around current state-of-the-art status rather than historical background.
+- Deprecated or discontinued technologies (e.g., CNTK) must be explicitly flagged as historical if mentioned.
+
+### 8.5 Apple Dark Mode UI Architecture (Presentation Layer)
+
+The user interface (`app.py`) implements a centered, Apple-inspired dark mode aesthetic:
+- **Sticky Glassmorphic Navigation Bar**: Translucent `rgba(0,0,0,0.72)` background with `backdrop-filter: saturate(180%) blur(20px)` and live LangGraph execution badge.
+- **Centered Hero Section**: High-impact typography, sub-headline, and pill badge tags.
+- **Quick Preset Selector**: One-click prompt chips for rapid execution (`Quantum + Crypto`, `DeepSeek vs Llama`, `AI Drug Discovery`, `Climate AI Models`).
+- **Inline Configuration Strip**: Integrated Provider (Groq/Gemini/Ollama), Model Selector, and API Key input directly alongside the search trigger.
+- **Idle State Showcase**: Interactive 4-step pipeline architecture cards (Planner → Researcher → Writer → Critic) displayed prior to execution.
+

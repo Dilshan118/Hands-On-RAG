@@ -97,7 +97,18 @@ Agentic_Research_Assistant/
 | **LLM Factory** | Provider-agnostic factory supporting Groq, Gemini, Ollama | Automatic Groq → Gemini fallback |
 | **Schema Validation** | Direct JSON Prompting + Pydantic v2 models | Bypasses tool-calling rate limits |
 | **Quality Gate** | Critic Agent with 0.8 score threshold + MAX_REVISIONS cap | Dual-condition loop termination guarantee |
-| **UI Dashboard** | Streamlit with glassmorphism CSS design system | Real-time metrics, execution logs, Markdown export |
+| **Anti-Hallucination** | 3-Step Source Grounding (`temp=0.0`) + Fabrication Quality Gate | Zero-tolerance for fabricated stats or entity relationships |
+| **Evidence Scaling** | 15 web sources max indexed, 600-char snippets, 5 query results | ~80% increase in evidence density per research pass |
+| **UI Dashboard** | Streamlit with Apple Dark Mode design system | Glassmorphic nav bar, preset chips, inline config strip |
+
+---
+
+## 🛡️ Anti-Hallucination & Systems Accuracy Architecture
+
+- **3-Step Source-Grounding Protocol (`writer.py`)**: Runs at `temperature=0.0`. Requires source identification `[N]`, strict paraphrasing, and traceable inline citations for every factual claim.
+- **Fabrication Detection Gate (`critic.py`)**: Runs at `temperature=0.0`. Cross-references all statistics against top 10 retrieved sources (400 chars each). Automatically penalizes fabricated statistics and forces revision loop if any number is ungrounded.
+- **Temporal Recency Guardrails (`planner.py`)**: Enforces temporal year qualifiers (`2025`/`2026`) in search queries and frames sub-questions around current state-of-the-art developments.
+- **Apple Dark Mode Interface (`app.py`)**: Centered layout, sticky glassmorphic navigation bar, one-click preset prompt chips, and inline model/provider configuration.
 
 ---
 

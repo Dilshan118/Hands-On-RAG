@@ -3,502 +3,649 @@ import sys
 import time
 import streamlit as st
 
-# Add current directory to Python path
 sys.path.append(os.path.dirname(__file__))
 
 from src.agents.graph import create_research_graph
 from src.tools.vector_store import LocalVectorStore
 from config import DEFAULT_MODEL_NAME, MAX_REVISIONS
 
-# Page Config
 st.set_page_config(
-    page_title="Agentic Research Engine",
-    page_icon="🤖",
+    page_title="Agentic Research Assistant",
+    page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Custom Glassmorphism CSS Design System
+# ─── DESIGN SYSTEM ──────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-    }
+  /* ── GLOBAL RESET ── */
+  html, body, [class*="css"] {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Inter", sans-serif;
+    background-color: #000000 !important;
+    color: #f5f5f7;
+    -webkit-font-smoothing: antialiased;
+  }
 
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-    }
+  h1, h2, h3, h4 {
+    letter-spacing: -0.03em;
+    color: #f5f5f7;
+  }
 
-    /* Main Container Padding */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 3rem;
-        max-width: 1200px;
-    }
+  /* ── HIDE STREAMLIT CHROME ── */
+  header[data-testid="stHeader"],
+  [data-testid="stToolbar"],
+  footer { display: none !important; }
 
-    /* Sidebar Glassmorphism */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-    }
+  /* ── SIDEBAR COLLAPSE ── */
+  [data-testid="stSidebar"] { display: none !important; }
+  [data-testid="collapsedControl"] { display: none !important; }
 
-    /* Card Containers */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 1.25rem;
-        margin-bottom: 1rem;
-        backdrop-filter: blur(12px);
-    }
+  /* ── PAGE WIDTH & SPACING ── */
+  .block-container {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
 
-    /* Metric Cards */
-    .metric-container {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 1rem;
-        text-align: center;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-    .metric-container:hover {
-        border-color: rgba(99, 102, 241, 0.4);
-        transform: translateY(-2px);
-    }
-    .metric-val {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: #6366f1;
-        margin-bottom: 0.25rem;
-    }
-    .metric-lbl {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #8b949e;
-    }
+  /* ── NAV BAR ── */
+  .nav-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 3rem;
+    height: 52px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid #2d2d2f;
+  }
+  .nav-logo {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #f5f5f7;
+  }
+  .nav-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #86868b;
+  }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; background: #34c759; display: inline-block; }
 
-    /* Buttons Micro-animations */
-    .stButton > button {
-        border-radius: 10px;
-        font-family: 'Outfit', sans-serif;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
-    }
+  /* ── HERO SECTION ── */
+  .hero {
+    padding: 5rem 2rem 3rem;
+    text-align: center;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .hero-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #0071e3;
+    margin-bottom: 1rem;
+  }
+  .hero-title {
+    font-size: clamp(2.5rem, 6vw, 4.25rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+    color: #f5f5f7;
+    margin-bottom: 1.25rem;
+  }
+  .hero-sub {
+    font-size: 1.15rem;
+    line-height: 1.6;
+    color: #86868b;
+    font-weight: 400;
+    max-width: 640px;
+    margin: 0 auto;
+  }
 
-    /* Gradient Text */
-    .gradient-title {
-        background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 2.75rem;
-        font-weight: 800;
-    }
+  /* ── PILL TAGS ── */
+  .tag-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1.75rem 0 2.5rem;
+  }
+  .tag {
+    padding: 0.35rem 0.9rem;
+    background: #1d1d1f;
+    border: 1px solid #3a3a3c;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #a1a1a6;
+    cursor: default;
+  }
 
-    /* Status Pill */
-    .status-pill {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        background: rgba(99, 102, 241, 0.15);
-        color: #818cf8;
-        border: 1px solid rgba(99, 102, 241, 0.3);
-    }
+  /* ── SEARCH AREA ── */
+  .search-wrapper {
+    max-width: 780px;
+    margin: 0 auto 1rem;
+  }
+  .stTextArea textarea {
+    background: #1d1d1f !important;
+    border: 1px solid #3a3a3c !important;
+    border-radius: 14px !important;
+    color: #f5f5f7 !important;
+    font-size: 1rem !important;
+    padding: 1rem 1.2rem !important;
+    line-height: 1.5 !important;
+    resize: none !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .stTextArea textarea:focus {
+    border-color: #0071e3 !important;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.18) !important;
+  }
+  .stTextArea label { color: #86868b !important; font-size: 0.85rem !important; font-weight: 500 !important; }
+
+  /* ── BUTTONS ── */
+  .stButton > button {
+    border-radius: 9999px !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    padding: 0.6rem 1.5rem !important;
+    transition: all 0.2s ease !important;
+    border: none !important;
+  }
+  .stButton > button[kind="primary"] {
+    background: #0071e3 !important;
+    color: #fff !important;
+  }
+  .stButton > button[kind="primary"]:hover {
+    background: #0077ed !important;
+    box-shadow: 0 4px 16px rgba(0, 113, 227, 0.45) !important;
+    transform: scale(1.02) !important;
+  }
+  .stButton > button[kind="secondary"] {
+    background: #1d1d1f !important;
+    border: 1px solid #3a3a3c !important;
+    color: #f5f5f7 !important;
+  }
+  .stButton > button[kind="secondary"]:hover {
+    border-color: #0071e3 !important;
+    color: #0071e3 !important;
+  }
+
+  /* ── CONFIG STRIP ── */
+  .config-strip {
+    max-width: 780px;
+    margin: 0 auto 3rem;
+    background: #1d1d1f;
+    border: 1px solid #2d2d2f;
+    border-radius: 14px;
+    padding: 0.25rem 0.5rem;
+  }
+  .stSelectbox > div > div {
+    background-color: transparent !important;
+    border: none !important;
+    color: #f5f5f7 !important;
+    font-size: 0.9rem !important;
+  }
+  .stTextInput input {
+    background: #1d1d1f !important;
+    border: 1px solid #3a3a3c !important;
+    border-radius: 10px !important;
+    color: #f5f5f7 !important;
+    font-size: 0.9rem !important;
+    padding: 0.6rem 0.9rem !important;
+  }
+  .stTextInput input:focus {
+    border-color: #0071e3 !important;
+    box-shadow: 0 0 0 3px rgba(0,113,227,0.18) !important;
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    border: none;
+    border-top: 1px solid #2d2d2f;
+    max-width: 1060px;
+    margin: 2rem auto;
+  }
+
+  /* ── RESULTS WRAPPER ── */
+  .results-wrapper {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  /* ── METRICS GRID ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .metric-card {
+    background: #1d1d1f;
+    border: 1px solid #2d2d2f;
+    border-radius: 14px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    transition: border-color 0.2s ease;
+  }
+  .metric-card:hover { border-color: #0071e3; }
+  .metric-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: #f5f5f7;
+  }
+  .metric-sub { font-size: 0.7rem; color: #86868b; }
+  .metric-lbl {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6e6e73;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.2rem;
+  }
+
+  /* ── CARDS ── */
+  .apple-card {
+    background: #1d1d1f;
+    border: 1px solid #2d2d2f;
+    border-radius: 18px;
+    padding: 1.75rem;
+    margin-bottom: 1rem;
+  }
+  .apple-card h4 { margin: 0 0 0.5rem 0; font-size: 1rem; font-weight: 600; }
+
+  /* ── AGENT CARDS (IDLE STATE) ── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    max-width: 1060px;
+    margin: 2.5rem auto 4rem;
+    padding: 0 2rem;
+  }
+  .agent-card {
+    background: #1d1d1f;
+    border: 1px solid #2d2d2f;
+    border-radius: 18px;
+    padding: 1.5rem 1.25rem;
+    transition: all 0.2s ease;
+  }
+  .agent-card:hover { border-color: #0071e3; transform: translateY(-2px); }
+  .agent-icon { font-size: 1.75rem; margin-bottom: 0.6rem; }
+  .agent-step { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #0071e3; margin-bottom: 0.3rem; }
+  .agent-name { font-size: 1rem; font-weight: 700; color: #f5f5f7; margin-bottom: 0.3rem; }
+  .agent-desc { font-size: 0.82rem; color: #6e6e73; line-height: 1.4; }
+
+  /* ── TABS ── */
+  .stTabs [data-baseweb="tab-list"] {
+    background: #1d1d1f;
+    border: 1px solid #2d2d2f;
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 1.5rem;
+  }
+  .stTabs [data-baseweb="tab"] {
+    border-radius: 9px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    color: #86868b !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0.5rem 1.25rem !important;
+  }
+  .stTabs [aria-selected="true"] {
+    background: #2c2c2e !important;
+    color: #f5f5f7 !important;
+    font-weight: 600 !important;
+  }
+
+  /* ── EXPANDERS ── */
+  [data-testid="stExpander"] {
+    background: #1d1d1f !important;
+    border: 1px solid #2d2d2f !important;
+    border-radius: 12px !important;
+  }
+  [data-testid="stExpander"] summary {
+    color: #f5f5f7 !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* ── CODE ── */
+  code { color: #0071e3 !important; font-size: 0.85em !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Sidebar Header Card
-st.sidebar.markdown("""
-<div style="text-align: center; padding: 0.5rem 0 1rem 0;">
-    <h2 style="margin: 0; font-size: 1.5rem; color: #ffffff;">🤖 AGENTIC ENGINE</h2>
-    <span class="status-pill">StateGraph Multi-Agent System</span>
+# ─── NAV BAR ────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="nav-bar">
+  <div class="nav-logo">⚡ Agentic Research Engine</div>
+  <div class="nav-badge">
+    <span class="nav-dot"></span>
+    LangGraph Swarm Active
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
-
-# LLM Provider Configuration
-st.sidebar.markdown("### ⚙️ Engine Settings")
-
-provider = st.sidebar.selectbox(
-    "LLM Provider",
-    options=["Groq (Recommended Free API)", "Google Gemini", "Ollama (Local Offline LLM)"],
-    index=0,
-    help="Groq offers ultra-fast, high-quota free inference for Llama-3.3-70B."
-)
-
-if "Groq" in provider:
-    os.environ["LLM_PROVIDER"] = "groq"
-    groq_key = st.sidebar.text_input(
-        "Groq API Key",
-        type="password",
-        value=os.getenv("GROQ_API_KEY", ""),
-        help="Get a 100% free key at console.groq.com"
-    )
-    if groq_key:
-        os.environ["GROQ_API_KEY"] = groq_key
-        
-    selected_model = st.sidebar.selectbox(
-        "Model",
-        options=[
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "groq/compound",
-            "groq/compound-mini",
-        ],
-        index=0,
-        help="All models are free on your Groq API key."
-    )
-    os.environ["GROQ_MODEL"] = selected_model
-
-elif "Google" in provider:
-    os.environ["LLM_PROVIDER"] = "google"
-    gemini_key = st.sidebar.text_input(
-        "Google Gemini API Key",
-        type="password",
-        value=os.getenv("GOOGLE_API_KEY", ""),
-        help="Get a free key at aistudio.google.com"
-    )
-    if gemini_key:
-        os.environ["GOOGLE_API_KEY"] = gemini_key
-        
-    selected_model = st.sidebar.selectbox(
-        "Model",
-        options=["gemini-1.5-flash", "gemini-1.5-pro"],
-        index=0
-    )
-    os.environ["GEMINI_MODEL"] = selected_model
-
-else:
-    os.environ["LLM_PROVIDER"] = "ollama"
-    selected_model = st.sidebar.selectbox(
-        "Ollama Model",
-        options=["llama3.2", "mistral", "qwen2.5"],
-        index=0,
-        help="Ensure 'ollama serve' is running locally."
-    )
-    os.environ["OLLAMA_MODEL"] = selected_model
-
-st.sidebar.markdown("---")
-
-# Active Engine Specs
-st.sidebar.markdown("### 📊 Active Specifications")
-st.sidebar.markdown(f"""
-<div class="glass-card" style="font-size: 0.85rem; line-height: 1.6;">
-    <div><b>Orchestration:</b> <code>LangGraph StateGraph</code></div>
-    <div><b>Provider:</b> <code>{os.getenv('LLM_PROVIDER', 'groq').upper()}</code></div>
-    <div><b>Active Model:</b> <code>{selected_model}</code></div>
-    <div><b>Max Revisions:</b> <code>{MAX_REVISIONS} Loops</code></div>
-    <div><b>Retrieval:</b> <code>ChromaDB + Multi-Threaded DDGS</code></div>
+# ─── HERO SECTION ───────────────────────────────────────────────────────────
+st.markdown("""
+<div class="hero">
+  <div class="hero-label">Multi-Agent Intelligence Platform</div>
+  <div class="hero-title">Research. Think. Verify.</div>
+  <div class="hero-sub">Autonomous multi-agent swarm that plans, searches, synthesises, and self-corrects — delivering grounded research reports at scale.</div>
 </div>
 """, unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🧱 Architecture Topology")
-st.sidebar.caption("""
-1. **🎯 Planner:** Task Decomposition & Query Cleaning
-2. **🌐 Research:** Concurrent Web & Vector Search
-3. **✍️ Writer:** Synthesis & Citation Indexing
-4. **🧐 Critic:** Groundedness Evaluation & Loop Gate
-""")
+# ─── FEATURE TAGS ───────────────────────────────────────────────────────────
+st.markdown("""
+<div class="tag-row">
+  <span class="tag">LangGraph StateGraph</span>
+  <span class="tag">Parallel Web Retrieval</span>
+  <span class="tag">ChromaDB RAG</span>
+  <span class="tag">Self-Correcting Loops</span>
+  <span class="tag">Citation Synthesis</span>
+</div>
+""", unsafe_allow_html=True)
 
-# Main Content Hero
-st.markdown('<h1 class="gradient-title">Agentic Research Assistant</h1>', unsafe_allow_html=True)
-st.markdown("<p style='color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;'>Stateful Autonomous Multi-Agent Collaboration Engine with Parallel Retrieval and Self-Correction Loops.</p>", unsafe_allow_html=True)
+# ─── MAIN SEARCH INPUT ──────────────────────────────────────────────────────
+_, center_col, _ = st.columns([0.1, 0.8, 0.1])
+with center_col:
+    # Quick presets
+    st.markdown("<p style='font-size:0.82rem; color:#6e6e73; font-weight:500; margin-bottom:0.5rem;'>QUICK PRESETS</p>", unsafe_allow_html=True)
+    p1, p2, p3, p4 = st.columns(4)
+    if "topic_val" not in st.session_state:
+        st.session_state["topic_val"] = ""
 
-# Knowledge Base PDF Ingestion
-with st.expander("📄 Optional: Upload PDF/TXT Documents (Local Vector Store RAG)", expanded=False):
-    uploaded_files = st.file_uploader("Upload files to query alongside live web search", type=["pdf", "txt"], accept_multiple_files=True)
-    if uploaded_files and st.button("Ingest Files into ChromaDB"):
-        vector_store = LocalVectorStore()
-        texts = []
-        metadatas = []
-        for file in uploaded_files:
-            content = file.read().decode("utf-8", errors="ignore")
-            texts.append(content)
-            metadatas.append({"source": file.name})
-        
-        vector_store.add_documents(texts, metadatas)
-        st.success(f"Successfully ingested {len(texts)} file(s) into local vector store!")
+    if p1.button("⚛️ Quantum + Crypto", type="secondary", use_container_width=True):
+        st.session_state["topic_val"] = "Impact of Quantum Computing on Modern Cryptography in 2026"
+    if p2.button("🤖 DeepSeek vs Llama", type="secondary", use_container_width=True):
+        st.session_state["topic_val"] = "DeepSeek-V3 vs Llama-3.3-70B Performance Benchmarks 2025"
+    if p3.button("🧬 AI Drug Discovery", type="secondary", use_container_width=True):
+        st.session_state["topic_val"] = "AI and Machine Learning in Drug Discovery and Pharmaceutical Research 2025"
+    if p4.button("🌍 Climate AI Models", type="secondary", use_container_width=True):
+        st.session_state["topic_val"] = "AI Climate Modelling and Carbon Emission Prediction Advances 2025"
 
-# Research Query Input
-topic = st.text_input(
-    "Research Topic or Technical Prompt:",
-    placeholder="e.g., Impact of Quantum Computing on Modern Cryptography in 2026",
-    value=""
-)
+    st.markdown("<div style='height:0.75rem'></div>", unsafe_allow_html=True)
 
-col_btn, col_blank = st.columns([1, 3])
-with col_btn:
-    start_button = st.button("🚀 Start Multi-Agent Research", type="primary", use_container_width=True)
+    topic = st.text_area(
+        label="Research Prompt",
+        placeholder="Ask anything… a research topic, technical question, or scientific inquiry.",
+        value=st.session_state["topic_val"],
+        height=100,
+        label_visibility="collapsed"
+    )
 
+    # Config & Action Row
+    c1, c2, c3, c4 = st.columns([2, 1.5, 1.5, 1])
+    with c1:
+        provider = st.selectbox(
+            "Provider",
+            options=["Groq (Free API)", "Google Gemini", "Ollama (Local)"],
+            index=0,
+            label_visibility="collapsed"
+        )
+
+    if "Groq" in provider:
+        os.environ["LLM_PROVIDER"] = "groq"
+        with c2:
+            selected_model = st.selectbox(
+                "Model",
+                options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"],
+                index=0,
+                label_visibility="collapsed"
+            )
+        os.environ["GROQ_MODEL"] = selected_model
+        with c3:
+            groq_key = st.text_input("API Key", type="password", value=os.getenv("GROQ_API_KEY", ""), placeholder="Groq API Key", label_visibility="collapsed")
+            if groq_key:
+                os.environ["GROQ_API_KEY"] = groq_key
+    elif "Google" in provider:
+        os.environ["LLM_PROVIDER"] = "google"
+        with c2:
+            selected_model = st.selectbox("Model", options=["gemini-1.5-flash", "gemini-1.5-pro"], index=0, label_visibility="collapsed")
+        os.environ["GEMINI_MODEL"] = selected_model
+        with c3:
+            gemini_key = st.text_input("API Key", type="password", value=os.getenv("GOOGLE_API_KEY", ""), placeholder="Gemini API Key", label_visibility="collapsed")
+            if gemini_key:
+                os.environ["GOOGLE_API_KEY"] = gemini_key
+    else:
+        os.environ["LLM_PROVIDER"] = "ollama"
+        with c2:
+            selected_model = st.selectbox("Model", options=["llama3.2", "mistral", "qwen2.5"], index=0, label_visibility="collapsed")
+        os.environ["OLLAMA_MODEL"] = selected_model
+        with c3:
+            st.caption("Ollama must be running locally")
+
+    with c4:
+        start_button = st.button("Research ↗", type="primary", use_container_width=True)
+
+    # Optional RAG Expander
+    with st.expander("📄 Add Context Documents (Optional RAG)", expanded=False):
+        uploaded_files = st.file_uploader("Upload .pdf or .txt reference files", type=["pdf", "txt"], accept_multiple_files=True)
+        if uploaded_files and st.button("Ingest into ChromaDB"):
+            vs = LocalVectorStore()
+            texts, metas = [], []
+            for f in uploaded_files:
+                texts.append(f.read().decode("utf-8", errors="ignore"))
+                metas.append({"source": f.name})
+            vs.add_documents(texts, metas)
+            st.success(f"Ingested {len(texts)} file(s) ✓")
+
+# ─── EXECUTION LOGIC ─────────────────────────────────────────────────────────
 if start_button:
-    current_provider = os.getenv("LLM_PROVIDER", "groq").lower()
-    if current_provider == "groq" and not os.getenv("GROQ_API_KEY"):
-        st.error("Please enter a valid Groq API Key in the sidebar to proceed.")
+    p = os.getenv("LLM_PROVIDER", "groq").lower()
+    if p == "groq" and not os.getenv("GROQ_API_KEY"):
+        st.error("Please enter your Groq API Key in the field above.")
         st.stop()
-    elif current_provider == "google" and not os.getenv("GOOGLE_API_KEY"):
-        st.error("Please enter a valid Google Gemini API Key in the sidebar to proceed.")
+    if p == "google" and not os.getenv("GOOGLE_API_KEY"):
+        st.error("Please enter your Google Gemini API Key.")
         st.stop()
-        
     if not topic.strip():
-        st.warning("Please enter a research topic first.")
+        st.warning("Please enter a research topic.")
         st.stop()
 
-    start_time = time.time()
+    t0 = time.time()
+    with st.spinner(""):
+        status = st.status("🤖  Orchestrating multi-agent swarm…", expanded=True)
 
-    # Execution Progress Container
-    status_container = st.status("🤖 Orchestrating Stateful Agent Graph...", expanded=True)
-    
-    initial_state = {
-        "topic": topic.strip(),
-        "sub_questions": [],
-        "search_queries": [],
-        "retrieved_docs": [],
-        "web_results": [],
-        "draft_report": "",
-        "critic_score": 0.0,
-        "critic_feedback": "",
-        "revision_count": 0,
-        "final_report": "",
-        "status_log": []
+    state = {
+        "topic": topic.strip(), "sub_questions": [], "search_queries": [],
+        "retrieved_docs": [], "web_results": [], "draft_report": "",
+        "critic_score": 0.0, "critic_feedback": "", "revision_count": 0,
+        "final_report": "", "status_log": []
     }
-
     try:
-        app_graph = create_research_graph()
-        final_state = app_graph.invoke(initial_state)
-        elapsed_time = time.time() - start_time
-        
-        for log in final_state.get("status_log", []):
-            status_container.write(log)
-            
-        status_container.update(label=f"✅ Multi-Agent Graph Completed in {elapsed_time:.2f}s!", state="complete", expanded=False)
+        graph = create_research_graph()
+        result = graph.invoke(state)
+        elapsed = time.time() - t0
+        for log in result.get("status_log", []):
+            status.write(log)
+        status.update(label=f"✅  Completed in {elapsed:.1f}s", state="complete", expanded=False)
+        st.session_state["result"] = result
+        st.session_state["elapsed"] = elapsed
+        st.session_state["last_topic"] = topic.strip()
+    except Exception as e:
+        status.update(label="❌  Error", state="error", expanded=True)
+        st.error(str(e))
+        st.stop()
 
-        st.markdown("<br>", unsafe_allow_html=True)
+# ─── RESULTS AREA ───────────────────────────────────────────────────────────
+if "result" in st.session_state:
+    R = st.session_state["result"]
+    T = st.session_state.get("elapsed", 0)
+    last_topic = st.session_state.get("last_topic", "")
 
-        # 4-Column Key Metrics Display
+    st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
+
+    # Metrics Row
+    _, mc, _ = st.columns([0.1, 0.8, 0.1])
+    with mc:
         m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-val">{final_state.get('critic_score', 0.0):.2f}/1.0</div>
-                <div class="metric-lbl">Groundedness Score</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m2:
-            st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-val">{elapsed_time:.2f}s</div>
-                <div class="metric-lbl">Execution Latency</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m3:
-            st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-val">{final_state.get('revision_count', 0)}</div>
-                <div class="metric-lbl">Reflection Loops</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with m4:
-            st.markdown(f"""
-            <div class="metric-container">
-                <div class="metric-val">{len(final_state.get('web_results', []))}</div>
-                <div class="metric-lbl">Web Sources</div>
-            </div>
-            """, unsafe_allow_html=True)
+        m1.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-num">{R.get('critic_score',0.0):.2f}<span class="metric-sub">/1.0</span></div>
+          <div class="metric-lbl">Groundedness</div>
+        </div>""", unsafe_allow_html=True)
+        m2.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-num">{T:.1f}s</div>
+          <div class="metric-lbl">Execution Time</div>
+        </div>""", unsafe_allow_html=True)
+        m3.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-num">{R.get('revision_count',0)}</div>
+          <div class="metric-lbl">Reflection Loops</div>
+        </div>""", unsafe_allow_html=True)
+        m4.markdown(f"""
+        <div class="metric-card">
+          <div class="metric-num">{len(R.get('web_results',[]))}</div>
+          <div class="metric-lbl">Web Sources</div>
+        </div>""", unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
 
-        # Output Navigation Tabs
-        tab_report, tab_sources, tab_state = st.tabs(["📝 Final Research Report", "🌐 Evidence & Sources", "📊 Engine Metrics & State"])
-        
-        with tab_report:
-            report_text = final_state.get("final_report", "No report generated.")
-            st.markdown(report_text)
+        # Output Tabs
+        tab_rep, tab_src, tab_dive, tab_raw = st.tabs(["📝  Research Report", "🌐  Sources", "🔬  Deep Dive", "📊  Swarm Metrics"])
 
-            # Store report in session state for the deep dive feature
-            st.session_state["last_report"] = report_text
-            st.session_state["last_final_state"] = final_state
+        with tab_rep:
+            report = R.get("final_report", "No report generated.")
+            st.markdown(report)
+            st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+            st.download_button("↓  Download Report (.md)", data=report,
+                               file_name=f"report_{last_topic[:25].replace(' ','_')}.md",
+                               mime="text/markdown")
 
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.download_button(
-                label="📥 Download Research Report (.md)",
-                data=report_text,
-                file_name=f"research_report_{topic[:20].strip().replace(' ', '_')}.md",
-                mime="text/markdown"
-            )
+        with tab_src:
+            web = R.get("web_results", [])
+            if web:
+                for res in web:
+                    st.markdown(f"""
+                    <div class="apple-card">
+                      <h4><a href="{res.get('url')}" target="_blank" style="color:#0071e3;text-decoration:none;">{res.get('title','Untitled')}</a></h4>
+                      <div style="font-size:0.78rem;color:#6e6e73;margin-bottom:0.5rem;"><code>{res.get('url','')}</code></div>
+                      <div style="font-size:0.9rem;color:#a1a1a6;line-height:1.5;">{res.get('snippet','')}</div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.info("No web results available.")
 
-            # ──────────────────────────────────────────────────────────
-            # DEEP DIVE: Highlight → Research Again
-            # User can select any claim from the report above, paste it
-            # here, and the agentic pipeline runs a focused deep-dive
-            # research cycle on just that specific claim.
-            # ──────────────────────────────────────────────────────────
-            st.markdown("<br>", unsafe_allow_html=True)
+            vd = R.get("retrieved_docs", [])
+            if vd:
+                st.subheader("📄 Document Context")
+                for d in vd:
+                    st.markdown(f"""
+                    <div class="apple-card">
+                      <code style='font-size:0.85rem;'>{d.get('source','Unknown')}</code>
+                      <p style='color:#a1a1a6;font-size:0.9rem;margin-top:0.5rem;line-height:1.5;'>{d.get('content','')}</p>
+                    </div>""", unsafe_allow_html=True)
+
+        with tab_dive:
             st.markdown("""
-            <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1.5rem; margin-top: 1rem;">
-                <h3 style="margin: 0 0 0.25rem 0;">🔍 Deep Dive Research</h3>
-                <p style="color: #8b949e; font-size: 0.9rem; margin-bottom: 1rem;">
-                    Copy any claim or statement from the report above and paste it below. The full agentic pipeline will run again to investigate that specific claim in depth.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            <div class="apple-card">
+              <div class="agent-step" style="margin-bottom:0.4rem;">Claim Verification Mode</div>
+              <h3 style="margin:0 0 0.5rem 0;">Deep Dive Investigation</h3>
+              <p style="color:#6e6e73;font-size:0.9rem;">Paste any statement from the report to run an isolated agentic verification loop specifically on that claim.</p>
+            </div>""", unsafe_allow_html=True)
 
-            deep_dive_claim = st.text_area(
-                "Paste a claim or statement to deep dive into:",
-                placeholder='e.g., "DeepSeek-V3 scores 87.1 on MMLU, surpassing most proprietary models"',
-                height=100,
-                key="deep_dive_input"
+            dd_claim = st.text_area(
+                "Claim to verify",
+                placeholder='"Quantum key distribution guarantees information-theoretic security…"',
+                height=90, key="dd_input", label_visibility="collapsed"
             )
-
-            col_dd_btn, col_dd_blank = st.columns([1, 3])
-            with col_dd_btn:
-                deep_dive_button = st.button("🔬 Deep Dive Into This Claim", type="secondary", use_container_width=True)
-
-            if deep_dive_button:
-                if not deep_dive_claim.strip():
-                    st.warning("Please paste a claim or statement to investigate.")
+            if st.button("🔬  Verify this Claim", type="secondary"):
+                if not dd_claim.strip():
+                    st.warning("Paste a claim first.")
                 else:
-                    dd_start_time = time.time()
-                    dd_topic = f"Investigate and verify this specific claim in depth: \"{deep_dive_claim.strip()}\""
-
-                    dd_status = st.status("🔬 Running Deep Dive Agent Graph on selected claim...", expanded=True)
-
-                    dd_initial_state = {
-                        "topic": dd_topic,
-                        "sub_questions": [],
-                        "search_queries": [],
-                        "retrieved_docs": [],
-                        "web_results": [],
-                        "draft_report": "",
-                        "critic_score": 0.0,
-                        "critic_feedback": "",
-                        "revision_count": 0,
-                        "final_report": "",
-                        "status_log": []
+                    dd_topic = f"Investigate and verify: \"{dd_claim.strip()}\""
+                    dd_status = st.status("Running deep dive agent loop…", expanded=True)
+                    dd_state = {
+                        "topic": dd_topic, "sub_questions": [], "search_queries": [],
+                        "retrieved_docs": [], "web_results": [], "draft_report": "",
+                        "critic_score": 0.0, "critic_feedback": "", "revision_count": 0,
+                        "final_report": "", "status_log": []
                     }
-
                     try:
+                        dd_t0 = time.time()
                         dd_graph = create_research_graph()
-                        dd_final_state = dd_graph.invoke(dd_initial_state)
-                        dd_elapsed = time.time() - dd_start_time
-
-                        for log in dd_final_state.get("status_log", []):
+                        dd_result = dd_graph.invoke(dd_state)
+                        dd_elapsed = time.time() - dd_t0
+                        for log in dd_result.get("status_log", []):
                             dd_status.write(log)
-
-                        dd_status.update(label=f"✅ Deep Dive Completed in {dd_elapsed:.2f}s!", state="complete", expanded=False)
-
-                        # Store deep dive results in session state
-                        st.session_state["deep_dive_result"] = dd_final_state
-                        st.session_state["deep_dive_elapsed"] = dd_elapsed
-                        st.session_state["deep_dive_claim"] = deep_dive_claim.strip()
-
+                        dd_status.update(label=f"✅  Deep Dive done in {dd_elapsed:.1f}s", state="complete", expanded=False)
+                        st.session_state["dd_result"] = dd_result
+                        st.session_state["dd_elapsed"] = dd_elapsed
+                        st.session_state["dd_claim"] = dd_claim.strip()
                     except Exception as e:
-                        dd_status.update(label="❌ Deep Dive Error", state="error", expanded=True)
-                        st.error(f"Deep Dive Error: {str(e)}")
+                        dd_status.update(label="❌ Error", state="error")
+                        st.error(str(e))
 
-            # Display Deep Dive Results (persisted in session state)
-            if "deep_dive_result" in st.session_state:
-                dd_state = st.session_state["deep_dive_result"]
-                dd_elapsed = st.session_state.get("deep_dive_elapsed", 0)
-                dd_claim = st.session_state.get("deep_dive_claim", "")
+            if "dd_result" in st.session_state:
+                dr = st.session_state["dd_result"]
+                de = st.session_state.get("dd_elapsed", 0)
+                dc = st.session_state.get("dd_claim", "")
 
-                st.markdown(f"""
-                <div style="border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 14px; padding: 1.25rem; margin-top: 1.5rem; background: rgba(99, 102, 241, 0.05);">
-                    <h3 style="margin: 0 0 0.5rem 0; color: #a5b4fc;">🔬 Deep Dive Results</h3>
-                    <p style="color: #8b949e; font-size: 0.85rem; margin-bottom: 1rem;"><b>Claim Investigated:</b> <em>"{dd_claim}"</em></p>
-                </div>
-                """, unsafe_allow_html=True)
+                dc1, dc2, dc3 = st.columns(3)
+                dc1.markdown(f"""<div class="metric-card"><div class="metric-num">{dr.get('critic_score',0):.2f}</div><div class="metric-lbl">Score</div></div>""", unsafe_allow_html=True)
+                dc2.markdown(f"""<div class="metric-card"><div class="metric-num">{de:.1f}s</div><div class="metric-lbl">Latency</div></div>""", unsafe_allow_html=True)
+                dc3.markdown(f"""<div class="metric-card"><div class="metric-num">{len(dr.get('web_results',[]))}</div><div class="metric-lbl">Sources</div></div>""", unsafe_allow_html=True)
 
-                # Deep Dive Metrics
-                dd_m1, dd_m2, dd_m3 = st.columns(3)
-                with dd_m1:
-                    st.markdown(f"""
-                    <div class="metric-container">
-                        <div class="metric-val">{dd_state.get('critic_score', 0.0):.2f}</div>
-                        <div class="metric-lbl">Deep Dive Score</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with dd_m2:
-                    st.markdown(f"""
-                    <div class="metric-container">
-                        <div class="metric-val">{dd_elapsed:.2f}s</div>
-                        <div class="metric-lbl">Deep Dive Latency</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with dd_m3:
-                    st.markdown(f"""
-                    <div class="metric-container">
-                        <div class="metric-val">{len(dd_state.get('web_results', []))}</div>
-                        <div class="metric-lbl">New Sources Found</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+                st.markdown(dr.get("final_report", ""))
+                st.download_button("↓  Download Deep Dive (.md)",
+                                   data=dr.get("final_report", ""),
+                                   file_name=f"deepdive_{dc[:25].replace(' ','_')}.md",
+                                   mime="text/markdown", key="dd_dl")
 
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                # Deep Dive Report
-                dd_report = dd_state.get("final_report", "No deep dive report generated.")
-                st.markdown(dd_report)
-
-                st.download_button(
-                    label="📥 Download Deep Dive Report (.md)",
-                    data=dd_report,
-                    file_name=f"deep_dive_{dd_claim[:30].strip().replace(' ', '_')}.md",
-                    mime="text/markdown",
-                    key="dd_download"
-                )
-            
-        with tab_sources:
-            st.subheader("🌐 Live Web Search Evidence")
-            web_res = final_state.get("web_results", [])
-            if web_res:
-                for res in web_res:
-                    st.markdown(f"""
-                    <div class="glass-card">
-                        <h4 style="margin-top: 0;"><a href="{res.get('url')}" target="_blank" style="color: #818cf8; text-decoration: none;">{res.get('title')}</a></h4>
-                        <div style="font-size: 0.8rem; color: #8b949e; margin-bottom: 0.5rem;"><b>URL:</b> <code>{res.get('url')}</code></div>
-                        <div style="font-size: 0.9rem; line-height: 1.5; color: #c9d1d9;">{res.get('snippet')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No external web results fetched.")
-                
-            st.subheader("📄 Local Vector Store Context")
-            vec_docs = final_state.get("retrieved_docs", [])
-            if vec_docs:
-                for doc in vec_docs:
-                    st.markdown(f"""
-                    <div class="glass-card">
-                        <div><b>Source Document:</b> <code>{doc.get('source')}</code></div>
-                        <div style="font-size: 0.9rem; color: #c9d1d9; margin-top: 0.5rem;">{doc.get('content')}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No local vector store documents queried.")
-
-        with tab_state:
+        with tab_raw:
             st.json({
-                "Execution Latency": f"{elapsed_time:.2f} seconds",
-                "Critic Quality Score": f"{final_state.get('critic_score', 0.0):.2f}/1.00",
-                "Revision Iterations": final_state.get("revision_count", 0),
-                "Sub-questions Decomposed": final_state.get("sub_questions", []),
-                "Executed Search Queries": final_state.get("search_queries", []),
-                "Critic Review Notes": final_state.get("critic_feedback", "")
+                "Execution Latency (s)": round(T, 3),
+                "Critic Score": round(R.get("critic_score", 0.0), 4),
+                "Revision Count": R.get("revision_count", 0),
+                "Sub-questions": R.get("sub_questions", []),
+                "Search Queries": R.get("search_queries", []),
+                "Critic Feedback": R.get("critic_feedback", ""),
             })
 
-    except Exception as e:
-        status_container.update(label="❌ Error executing agent graph", state="error", expanded=True)
-        st.error(f"Execution Error: {str(e)}")
+# ─── IDLE STATE ─────────────────────────────────────────────────────────────
+else:
+    st.markdown("""
+    <div class="agent-grid">
+      <div class="agent-card">
+        <div class="agent-icon">🎯</div>
+        <div class="agent-step">Step 01</div>
+        <div class="agent-name">Planner</div>
+        <div class="agent-desc">Decomposes complex topics into precise sub-questions and search queries.</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🌐</div>
+        <div class="agent-step">Step 02</div>
+        <div class="agent-name">Researcher</div>
+        <div class="agent-desc">Executes parallel web search and ChromaDB vector retrieval concurrently.</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">✍️</div>
+        <div class="agent-step">Step 03</div>
+        <div class="agent-name">Writer</div>
+        <div class="agent-desc">Synthesises all evidence into a structured, well-cited research report.</div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-icon">🧐</div>
+        <div class="agent-step">Step 04</div>
+        <div class="agent-name">Critic</div>
+        <div class="agent-desc">Scores groundedness and gates the loop — revising until quality passes.</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)

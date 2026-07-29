@@ -170,19 +170,19 @@ def critic_agent_node(state: dict) -> dict:
     #   lenient on vague, generic, or repetitive reports
     # ──────────────────────────────────────────────────────────
 
-    # Build a smart truncation that captures both beginning AND end of report
-    # This ensures the Critic sees the Executive Summary AND the Comparison Table
-    if len(draft_report) > 4000:
-        report_for_eval = draft_report[:2500] + "\n\n[... middle content truncated for evaluation ...]\n\n" + draft_report[-1500:]
+    if len(draft_report) > 6000:
+        report_for_eval = draft_report[:3500] + "\n\n[... middle content truncated for evaluation ...]\n\n" + draft_report[-2500:]
     else:
         report_for_eval = draft_report
 
-    # Format web_results & vector docs concisely to prevent token bloat
-    compact_web = "\n".join([f"- {r.get('title', '')}: {r.get('snippet', '')[:200]}" for r in web_results[:5]])
-    compact_docs = "\n".join([f"- {d.get('source', '')}: {d.get('content', '')[:200]}" for d in retrieved_docs[:5]])
+    # Format web_results & vector docs with enough context for real cross-referencing
+    compact_web = "\n".join([f"[Source {i+1}] {r.get('title', '')}: {r.get('snippet', '')[:400]}" for i, r in enumerate(web_results[:10])])
+    compact_docs = "\n".join([f"[Doc {i+1}] {d.get('source', '')}: {d.get('content', '')[:400]}" for i, d in enumerate(retrieved_docs[:5])])
 
-    prompt = f"""You are a rigorous Technical Peer Reviewer and Fact-Checker.
-Evaluate the following Draft Report against the provided Source Context on FIVE specific quality dimensions.
+    prompt = f"""You are a rigorous Technical Peer Reviewer, Fact-Checker, and Hallucination Detector.
+Evaluate the following Draft Report against the provided Source Context on SIX specific quality dimensions.
+
+YOUR PRIMARY MISSION: Detect and penalize ANY fabricated, invented, or unsupported statistics, numbers, percentages, or claims.
 
 DRAFT REPORT:
 {report_for_eval}
@@ -196,38 +196,46 @@ Vector Docs:
 
 EVALUATION DIMENSIONS (score each 0.0-1.0, then compute weighted average):
 
-1. GROUNDEDNESS (weight 25%): Are factual claims supported by the provided source evidence?
+1. FABRICATION DETECTION (weight 25% — HIGHEST PRIORITY):
+   - Scan EVERY statistic, percentage, dollar amount, market figure, benchmark score, growth rate, and numerical claim in the draft.
+   - For EACH number found, check if it appears (even approximately) in the provided source evidence above.
+   - If ANY number appears in the draft but is NOT found in the source context, flag it as a hallucinated claim and reduce score by 0.15 per fabricated number.
+   - Common fabrication patterns to watch for: "X% increase", "$Y billion market", "Z% accuracy", "N% adoption rate", specific training times, specific iteration counts.
+   - If the draft presents a discontinued technology as currently active (e.g., CNTK described as popular/current), flag it as a hallucination.
+   - Score 0.0 if 3+ fabricated statistics are found.
+
+2. GROUNDEDNESS (weight 30%):
+   - Are factual claims supported by the provided source evidence?
    - Deduct points for claims with no matching source citation.
-   - Check that inline citation numbers [1], [2] correspond to real sources.
+   - Check that inline citation numbers [1], [2] correspond to REAL sources in the source context.
+   - Deduct 0.2 if citation numbers are used that don't match any provided source.
 
-2. SPECIFICITY (weight 20%): Does the report name SPECIFIC entities (technologies, products, organizations, standards, people, frameworks)?
-   - Deduct 0.2 if the report relies on vague collective terms (e.g., "various companies", "many tools", "some solutions") without naming concrete examples.
-   - A good report names at least 3-4 specific entities per category being discussed.
+3. SPECIFICITY (weight 15%): Does the report name SPECIFIC entities (technologies, products, organizations, standards, frameworks)?
+   - Deduct 0.2 if it relies on vague terms ("various companies", "many tools") without naming concrete examples.
 
-3. QUANTITATIVE RIGOR (weight 15%): Does the report include measurable data?
-   - Look for: statistics, performance metrics, market figures, adoption rates, costs, timelines, percentages, or benchmark scores.
-   - Deduct 0.25 if the report contains ZERO quantitative data points.
-
-4. FACTUAL ACCURACY (weight 15%): Are technical claims and categorizations correct?
-   - Check for: incorrect classifications, conflated categories, outdated information presented as current, or misattributed claims.
-   - Cross-reference claims against the provided source context.
+4. FACTUAL ACCURACY (weight 10%):
+   - Are technical claims and categorizations correct based on the source context?
+   - Check for: incorrect classifications, conflated categories, outdated info presented as current, misattributed claims.
 
 5. TABLE QUALITY (weight 10%): If a comparison table exists, does it have DIFFERENTIATED values per row?
    - Deduct 0.3 if all rows have identical or near-identical ratings/labels.
-   - A good table has distinct, specific values that meaningfully distinguish each entry.
+   - Deduct 0.3 if table contains numbers that don't appear in any source.
 
-6. COVERAGE COMPLETENESS (weight 15%): Does the report cover ALL major players and perspectives from different global regions and ecosystems?
-   - Deduct 0.2 if the report only covers entities from ONE geographic region (e.g., only US companies) while the topic has significant global contributors.
-   - Check for missing major players from China, Europe, Asia, or other regions that are relevant to the topic.
-   - If coverage gaps exist, provide revised_search_queries that explicitly name the missing entities or regions.
+6. COVERAGE COMPLETENESS (weight 10%): Does the report cover entities from multiple global regions?
+   - Deduct 0.2 if it only covers entities from ONE geographic region while the topic has global contributors.
+
+CRITICAL SCORING RULES:
+- If you find EVEN ONE clearly fabricated statistic (a specific number that appears nowhere in the source context), the final score MUST be below 0.8.
+- A report full of plausible-sounding but unsourced numbers is WORSE than a report with qualitative descriptions and proper citations.
+- Provide the exact fabricated claims in the "hallucinated_claims" list so the Writer knows what to remove.
 
 Respond ONLY with a valid JSON object in this exact format (no markdown formatting, no extra text):
 {{
     "is_grounded": true,
     "score": 0.85,
-    "hallucinated_claims": [],
+    "hallucinated_claims": ["List each specific fabricated statistic or unsupported claim here"],
     "missing_topics": [],
-    "feedback": "Detailed review with specific instructions for improvement. If major global players or regions are missing, explicitly name them here.",
+    "feedback": "Detailed review: list every fabricated number and instruct the Writer to either find a real source or remove the number and use qualitative language instead.",
     "revised_search_queries": []
 }}
 """
@@ -239,7 +247,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown formatti
     # The Critic needs to be maximally consistent and deterministic
     # in its scoring. We don't want creative flair in fact-checking.
     # ──────────────────────────────────────────────────────────
-    llm = get_llm(temperature=0.1)
+    llm = get_llm(temperature=0.0)
 
     try:
         response = llm.invoke(prompt)
@@ -283,7 +291,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown formatti
         # - Prevents infinite revision loops from Critic failures
         # ──────────────────────────────────────────────────────
         logger.warning(f"Critic LLM parsing failed (using safe defaults): {e}")
-        critic_score = 0.88
+        critic_score = 0.75
         critic_feedback = "Report meets quality & groundedness criteria."
         revised_queries = []
 

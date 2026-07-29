@@ -63,7 +63,7 @@ load_dotenv()
 DEFAULT_PROVIDER = "groq"                    # Which LLM provider to use by default
 DEFAULT_MODEL_NAME = "llama-3.3-70b-versatile"  # Default Groq model (70B parameter Llama 3.3)
 EMBEDDING_MODEL_NAME = "models/text-embedding-004"  # Google embedding model for vector search
-MAX_REVISIONS = 2                            # Maximum reflection loops before forced finalization
+MAX_REVISIONS = 3                            # Maximum reflection loops before forced finalization
 CHROMA_PERSIST_DIR = os.path.join(           # Local persistent storage path for ChromaDB vectors
     os.path.dirname(__file__), "chroma_db"
 )

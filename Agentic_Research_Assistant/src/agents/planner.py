@@ -130,6 +130,8 @@ CRITICAL PLANNING RULES:
 6. Search queries should be designed to surface authoritative primary sources (research papers, official documentation, industry reports, technical benchmarks) over generic blog posts.
 7. COMPREHENSIVE GLOBAL COVERAGE: Sub-questions must consider ALL major players and perspectives — including entities from different geographic regions, organizations, and ecosystems (e.g., US, Europe, China, open-source communities). Do NOT focus only on Western/English-language entities. If a field has significant contributors from Asia, Europe, or other regions, they MUST be explicitly included.
 8. At least one search query MUST explicitly target entities or developments from underrepresented ecosystems to counteract English-language search engine bias. For example, if the topic involves technology, include queries naming specific Chinese, European, or other non-US entities.
+9. TEMPORAL RECENCY: At least 2 search queries MUST include a year qualifier (e.g., "2025" or "2026") to ensure results reflect the current state-of-the-art rather than outdated information from prior years.
+10. Sub-questions MUST ask about the CURRENT status and latest developments — NOT historical overviews. Frame questions as "What is the current..." or "What are the latest..." rather than "What is the history of...".
 
 Respond ONLY with a valid JSON object in this exact format (no markdown formatting, no extra text):
 {{
@@ -140,8 +142,8 @@ Respond ONLY with a valid JSON object in this exact format (no markdown formatti
         "Fourth sub-question covering GLOBAL perspectives — including entities from different regions, organizations, and ecosystems that are significant to {topic}"
     ],
     "search_queries": [
-        "specific entity or technology comparison data query 1",
-        "specific entity vs entity performance or benchmark query 2",
+        "specific entity or technology comparison data 2025 query 1",
+        "specific entity vs entity performance benchmark 2026 query 2",
         "specific entity latest developments or applications query 3",
         "specific underrepresented region or ecosystem entity query 4"
     ]

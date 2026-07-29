@@ -107,8 +107,8 @@ def writer_agent_node(state: dict) -> dict:
 
     seen_urls = set()
     indexed_count = 0
-    MAX_WEB_SOURCES = 10  # Top 10 sources give high coverage without blowing token limits
-    MAX_SNIPPET_LEN = 450  # High-density snippet length
+    MAX_WEB_SOURCES = 15  # Top 15 sources give high coverage for accurate reports
+    MAX_SNIPPET_LEN = 600  # Longer snippets provide richer evidence to the writer
 
     # Index web search results (from DuckDuckGo)
     for item in web_results:
@@ -162,7 +162,20 @@ def writer_agent_node(state: dict) -> dict:
     # ──────────────────────────────────────────────────────────
     feedback_prompt = ""
     if critic_feedback and "meets" not in critic_feedback.lower():
-        feedback_prompt = f"\nCRITICAL REVIEW FEEDBACK FROM PREVIOUS DRAFT:\n{critic_feedback}\nMake sure to address all noted gaps above.\n"
+        feedback_prompt = f"""
+══════════════════════════════════════════════════════════════════════
+⚠️  MANDATORY REVISION — YOUR PREVIOUS DRAFT WAS REJECTED:
+══════════════════════════════════════════════════════════════════════
+{critic_feedback}
+
+YOU MUST:
+1. REMOVE every claim flagged as hallucinated above.
+2. REPLACE fabricated statistics with qualitative language OR find the actual data in the RETRIEVED SOURCES.
+3. REMOVE any citation [N] that doesn't match a real source snippet.
+4. REMOVE any fabricated entity relationships not stated in sources.
+5. If you cannot find source evidence for a claim, write: "No source data available for this specific point."
+══════════════════════════════════════════════════════════════════════
+"""
 
     # ──────────────────────────────────────────────────────────
     # STEP 4: Construct the comprehensive Writer prompt
@@ -174,45 +187,73 @@ def writer_agent_node(state: dict) -> dict:
     # the exact Markdown skeleton we want, it fills in the content
     # while maintaining our desired formatting.
     # ──────────────────────────────────────────────────────────
-    prompt = f"""You are a Lead Technical Writer specializing in precise, evidence-driven research reports.
-Your goal is to synthesize the retrieved evidence into a comprehensive, publication-grade Markdown Research Report.
+    prompt = f"""You are a Lead Technical Writer whose ONLY job is to synthesize the RETRIEVED SOURCES below into an accurate research report.
+
+══════════════════════════════════════════════════════════════════════
+MANDATORY SOURCE-GROUNDING PROTOCOL (VIOLATING ANY RULE = AUTOMATIC REJECTION):
+══════════════════════════════════════════════════════════════════════
+
+BEFORE writing ANY factual sentence, you MUST follow this 3-step process:
+  Step 1: Identify which RETRIEVED SOURCE (by [N] number) contains the information.
+  Step 2: Paraphrase ONLY what that source actually says — nothing more.
+  Step 3: Attach the correct [N] citation inline.
+
+If you CANNOT find a source for a claim → DO NOT WRITE IT. Instead write:
+"No authoritative source was retrieved for this specific claim."
+
+ABSOLUTE PROHIBITIONS:
+× NEVER invent statistics, percentages, dollar figures, market sizes, growth rates, benchmark scores, accuracy rates, or ANY number not explicitly stated in a retrieved source.
+× NEVER fabricate relationships between entities (e.g., "Company X runs on Company Y's platform") unless a source EXPLICITLY states this.
+× NEVER assign a citation number [N] to a claim unless you are directly paraphrasing content from source [N] above.
+× NEVER use your training data to fill gaps. If sources don't cover it, say so.
+× NEVER present discontinued/deprecated technologies as current. If unsure of status, say "status unclear from retrieved sources."
+× NEVER invent URLs, paper titles, author names, or publication details.
+
+WHEN NO NUMBER EXISTS IN SOURCES:
+  ✓ CORRECT: "PyTorch has seen rapidly growing adoption in research" 
+  × WRONG: "PyTorch adoption grew by 25%"
+  ✓ CORRECT: "The global AI market has expanded significantly"
+  × WRONG: "The global AI market reached $190 billion"
+
+══════════════════════════════════════════════════════════════════════
 
 Topic: {topic}
 
 Sub-Questions Analyzed:
 {chr(10).join(f"- {q}" for q in sub_questions)}
 {feedback_prompt}
-RETRIEVED SOURCES & EVIDENCE:
-{sources_text if sources_text else "No external evidence retrieved. Use general domain knowledge base."}
+══════════════════════════════════════════════════════════════════════
+RETRIEVED SOURCES & EVIDENCE (THIS IS YOUR ONLY ALLOWED KNOWLEDGE BASE):
+══════════════════════════════════════════════════════════════════════
+{sources_text if sources_text else "NO SOURCES RETRIEVED. Write a brief note stating that no evidence was found. Do NOT generate a report from training data."}
+══════════════════════════════════════════════════════════════════════
 
-CRITICAL WRITING RULES (MANDATORY — failure to follow will trigger a revision cycle):
-1. Name SPECIFIC entities throughout the report: exact technologies, products, organizations, standards, versions, people, or frameworks relevant to the topic. NEVER use vague collective terms (e.g., "various tools", "many companies", "some models") without naming concrete examples.
-2. Include QUANTITATIVE or MEASURABLE data wherever possible: statistics, benchmark scores, market figures, adoption rates, performance metrics, costs, timelines, or percentages. A report with zero numbers is a weak report.
-3. The comparison table MUST have DIFFERENTIATED values per row — NEVER use the same generic label for all entries. Each row must show distinct, specific attributes or metrics that distinguish it from others.
-4. Each section must add NEW information — do NOT repeat the Executive Summary content in the Detailed Analysis. The Executive Summary provides a high-level overview; the Detailed Analysis provides depth, evidence, and nuance.
-5. When comparing categories or alternatives, always name at least 3-4 SPECIFIC examples per category with concrete differentiating attributes.
-6. Ensure technical accuracy — correctly categorize and classify entities. Do not conflate different types, generations, or categories of technologies.
-7. Every factual claim MUST have an inline citation [1], [2] etc. corresponding to the source IDs above. Do not make unsupported claims.
-8. COMPREHENSIVE GLOBAL COVERAGE: The report MUST cover entities from ALL major geographic regions and ecosystems relevant to the topic. Do NOT focus exclusively on US/Western entities. If the field has significant contributors from China (e.g., DeepSeek, Alibaba, Baidu, Tencent, Huawei), Europe, Japan, Korea, India, or open-source communities worldwide, they MUST be explicitly named and compared on equal footing.
+WRITING RULES:
+1. EVERY factual claim MUST cite a specific [N] source from above. No exceptions.
+2. Name SPECIFIC entities mentioned in the sources — not vague terms.
+3. Use QUALITATIVE descriptions when sources lack quantitative data.
+4. The comparison table must use attributes ACTUALLY described in sources — not invented metrics.
+5. Each section must add NEW depth — no repeating the Executive Summary.
+6. Cover entities from multiple global regions if sources mention them.
+7. Clearly mark current vs. historical information.
 
-Format Guidelines:
-# [Clear Descriptive Report Title]
+Report Structure:
+# [Descriptive Report Title]
 
 ## 📌 Executive Summary
-Provide a high-level 2-3 paragraph executive summary of key findings. Include at least 2 specific quantitative data points or named entities.
+2-3 paragraphs summarizing key findings with [N] citations for every claim.
 
 ## 🚀 Key Takeaways
-- Highlight 4-5 major takeaways using bold key terms. Each takeaway must include a specific name, number, or measurable metric.
+- 4-5 bold takeaways, each citing a specific source [N].
 
 ## 🔬 Detailed Technical Analysis
-Break down the research by sub-question headers. Write detailed, analytical paragraphs with NEW depth beyond the Executive Summary.
-Include inline numerical citations like [1], [2] corresponding EXACTLY to the source IDs provided above whenever presenting factual statements.
+Organized by sub-question. Every paragraph must cite sources. If a sub-question has no source coverage, state that explicitly.
 
 ## 📊 Summary Comparison
-Include a Markdown comparison table with SPECIFIC, DIFFERENTIATED values per row. Include columns for quantitative metrics relevant to the topic — not just qualitative labels.
+Markdown table with DIFFERENTIATED values sourced from evidence. Use qualitative descriptors from sources, NOT invented numbers.
 
 ## 🏁 Conclusion
-Provide a strategic conclusion and future outlook with specific predictions, timelines, or recommendations.
+Evidence-grounded conclusion and outlook.
 
 ## 📖 References
 {references_table if source_index > 1 else "*No external sources cited.*"}
@@ -225,7 +266,7 @@ Provide a strategic conclusion and future outlook with specific predictions, tim
     # because we want the Writer to be somewhat creative in its
     # prose style, while still being factually grounded.
     # ──────────────────────────────────────────────────────────
-    llm = get_llm(temperature=0.3)
+    llm = get_llm(temperature=0.0)
     try:
         response = llm.invoke(prompt)
         draft_report = response.content

@@ -180,7 +180,7 @@ def _single_query_search(query: str, max_results: int = 3) -> List[Dict[str, Any
     return results
 
 
-def search_web(queries: List[str], max_results_per_query: int = 3) -> List[Dict[str, Any]]:
+def search_web(queries: List[str], max_results_per_query: int = 5) -> List[Dict[str, Any]]:
     """
     Executes concurrent multi-threaded web searches for a list of queries.
 
